@@ -8,6 +8,7 @@ library(leaflet)
 library(markdown)   # to render README.md
 library(tidyr)
 library(rgplates)
+library(digest)
 
 options(shiny.maxRequestSize = 50 * 1024^2)  # allow up to 50MB uploads
 
@@ -409,6 +410,139 @@ classify_interval_type <- function(label) {
   )
 }
 
+# ---------- Assign Paleooceans helpers ------------
+
+# most-frequent non-NA value
+.mode1 <- function(x) {
+  x <- x[!is.na(x) & x != ""]
+  if (!length(x)) return(NA_character_)
+  names(sort(table(x), decreasing = TRUE))[1]
+}
+
+# Age (Ma) -> epoch bucket for ocean rules
+.epoch_from_age_ma <- function(age) {
+  if (is.na(age)) return(NA_character_)
+  if (age <= 0.0117) return("Holocene")
+  if (age <= 2.58)   return("Pleistocene")
+  if (age <= 5.333)  return("Pliocene")
+  if (age <= 23.03)  return("Miocene")
+  if (age <= 33.9)   return("Oligocene")
+  if (age <= 56)     return("Eocene")
+  if (age <= 66)     return("Paleocene")
+  if (age <= 100.5)  return("Upper Cretaceous")
+  if (age <= 145)    return("Lower Cretaceous")
+  if (age <= 161.5)  return("Upper Jurassic")
+  if (age <= 174.1)  return("Middle Jurassic")
+  if (age <= 201.3)  return("Lower Jurassic")
+  NA_character_
+}
+
+
+
+.classify_ocean <- function(epoch_label, lon, lat) {
+  # Guard
+  if (is.na(lon) || is.na(lat)) return(NA_character_)
+  e <- epoch_label %||% NA_character_
+  if (is.na(e)) return(NA_character_)
+  
+  # Helpers
+  between <- function(x, a, b) is.finite(x) && x > a && x < b
+  
+  # Jurassic
+  if (e %in% c("Lower Jurassic","Middle Jurassic","Upper Jurassic")) {
+    if (e == "Lower Jurassic") {
+      if (between(lon, 0, 120) && between(lat, -40, 45)) return("Tethys")
+      else return("Pacific")
+    }
+    if (e == "Middle Jurassic") {
+      if (between(lon, 0, 120) && between(lat, -45, 45)) return("Tethys")
+      else return("Pacific")
+    }
+    if (e == "Upper Jurassic") {
+      if (between(lon, 22, 130) && between(lat, -40, 30)) return("Tethys")
+      else return("Pacific")
+    }
+  }
+  
+  # Lower Cretaceous
+  if (e == "Lower Cretaceous") {
+    if (between(lon, -70, -30) && between(lat, 30, 70)) return("Western Interior Seaway")
+    if (between(lon, 30, 120)  && between(lat, -60, 30)) return("Tethys")
+    if (between(lon, -50, 0)   && between(lat, 0, 40))   return("Western Tethys")
+    if (between(lon, 0, 30)    && between(lat, 0, 60))   return("Tethys Seaway")
+    if (between(lon, 30, 60)   && between(lat, 30, 60))  return("Tethys Seaway")
+    if (between(lon, -30, 0)   && between(lat, -60, 0))  return("Atlantic")
+    if (between(lon, -55, -40) && between(lat, -20, 0))  return("South American Epicontinental Seas")
+    if (lat > 60) return("Arctic")
+    return("Pacific")
+  }
+  
+  # Upper Cretaceous
+  if (e == "Upper Cretaceous") {
+    if (between(lon, 30, 120)  && between(lat, -60, 30)) return("Tethys")
+    if (between(lon, 0, 30)    && between(lat, -15, 15)) return("Trans-Saharan Seaway")
+    if (between(lon, -60, 0)   && between(lat, 0, 40))   return("Western Tethys")
+    if (between(lon, -50, -30) && between(lat, 30, 60))  return("Western Interior Seaway")
+    if (between(lon, 0, 30)    && between(lat, 0, 60))   return("Tethys Seaway")
+    if (between(lon, 30, 60)   && between(lat, 30, 60))  return("Tethys Seaway")
+    if (between(lon, -30, 0)   && between(lat, -60, 0))  return("Atlantic")
+    if (between(lon, -55, -40) && between(lat, -25, 0))  return("South American Epicontinental Seas")
+    if (lat > 60) return("Arctic")
+    return("Pacific")
+  }
+  
+  # Paleocene
+  if (e == "Paleocene") {
+    if (lon < 0 && lon > -60 && between(lat,-60,60)) return("Atlantic")
+    if (between(lon, 0, 120) && between(lat,-60,60)) return("Tethys")
+    if (lat > 60)  return("Arctic")
+    if (lat < -60) return("Southern")
+    return("Pacific")
+  }
+  
+  # Eocene
+  if (e == "Eocene") {
+    if (between(lon, 0, 120) && between(lat,-60,0))  return("Indian")
+    if (between(lon, 0, 120) && between(lat,0,60))   return("Neo-Tethys")
+    if (between(lon, -60, 0) && between(lat,-60,60)) return("Atlantic")
+    if (lat > 60)  return("Arctic")
+    if (lat < -60) return("Southern")
+    return("Pacific")
+  }
+  
+  # Oligocene
+  if (e == "Oligocene") {
+    if (between(lon, 0, 45)   && between(lat,22.5,60)) return("Neo-Tethys")
+    if (between(lon, -60, 0)  && between(lat,-60,60))  return("Atlantic")
+    if (between(lon, 30, 120) && between(lat,-60,15))  return("Indian")
+    if (lat > 60)  return("Arctic")
+    if (lat < -60) return("Southern")
+    return("Pacific")
+  }
+  
+  # Miocene
+  if (e == "Miocene") {
+    if (between(lon, 0, 45)   && between(lat,22.5,60)) return("Neo-Tethys")
+    if (between(lon, -60, 0)  && between(lat,-60,60))  return("Atlantic")
+    if (between(lon, 30, 120) && between(lat,-60,15))  return("Indian")
+    if (lat > 60)  return("Arctic")
+    if (lat < -60) return("Southern")
+    return("Pacific")
+  }
+  
+  # Pliocene / Pleistocene / Holocene
+  if (e %in% c("Pliocene","Pleistocene","Holocene")) {
+    if (between(lon, 0, 45)   && between(lat,22.5,60)) return("Mediterranean")
+    if (between(lon, -60, 0)  && between(lat,-60,60))  return("Atlantic")
+    if (between(lon, 30, 120) && between(lat,-60,20))  return("Indian")
+    if (lat > 60)  return("Arctic")
+    if (lat < -60) return("Southern")
+    return("Pacific")
+  }
+  
+  # Fallback
+  NA_character_
+}
 
 
 # ---------- load datasets (prefer *_norm if present) ----------
@@ -445,11 +579,11 @@ occ <- occ %>% mutate(
 )
 
 # Robust coll_id for occurrences
-if ("collection_no" %in% names(occ) && "collection_number" %in% names(occ)) {
-  occ <- occ %>% mutate(coll_id = dplyr::coalesce(as.character(collection_no),
+if ("collection_number" %in% names(occ) && "collection_number" %in% names(occ)) {
+  occ <- occ %>% mutate(coll_id = dplyr::coalesce(as.character(collection_number),
                                                   as.character(collection_number)))
-} else if ("collection_no" %in% names(occ)) {
-  occ <- occ %>% mutate(coll_id = as.character(collection_no))
+} else if ("collection_number" %in% names(occ)) {
+  occ <- occ %>% mutate(coll_id = as.character(collection_number))
 } else if ("collection_number" %in% names(occ)) {
   occ <- occ %>% mutate(coll_id = as.character(collection_number))
 } else {
@@ -458,13 +592,13 @@ if ("collection_no" %in% names(occ) && "collection_number" %in% names(occ)) {
 
 # ---------- Collections prep ----------
 # Robust coll_id
-if ("collection_number" %in% names(col) && "collection_no" %in% names(col)) {
+if ("collection_number" %in% names(col) && "collection_number" %in% names(col)) {
   col <- col %>% mutate(coll_id = dplyr::coalesce(as.character(collection_number),
-                                                  as.character(collection_no)))
+                                                  as.character(collection_number)))
 } else if ("collection_number" %in% names(col)) {
   col <- col %>% mutate(coll_id = as.character(collection_number))
-} else if ("collection_no" %in% names(col)) {
-  col <- col %>% mutate(coll_id = as.character(collection_no))
+} else if ("collection_number" %in% names(col)) {
+  col <- col %>% mutate(coll_id = as.character(collection_number))
 } else {
   col <- col %>% mutate(coll_id = NA_character_)
 }
@@ -692,8 +826,10 @@ ui <- tagList(
                checkboxGroupInput(
                  "pbdb_col_paleo",
                  "Paleocoordinate and paleoocean addition",
-                 choices = c("Compute paleocoordinates (30 replicates)" = "compute"),
-                 #choices = c("Compute paleooceans (30 replicates)" = "compute"),
+                 choices = c(
+                   "Compute paleocoordinates (30 replicates)" = "compute",
+                   "Assign paleooceans (Compute paleocoordinates first!)" = "ocean"
+                 ),
                  selected = NULL
                ),
                radioButtons("pbdb_col_mode", "Apply to Collections:",
@@ -772,6 +908,19 @@ server <- function(input, output, session) {
     rep(NA_character_, nrow(df))
   }
 
+  # Cache for paleocoords keyed by the uploaded Collections file contents
+rv$paleo_cache <- list()
+
+.make_paleo_key <- function(df_raw) {
+  # hash only the columns that matter for reconstruction
+  if (!requireNamespace("digest", quietly = TRUE)) return(NULL)
+  cols <- tolower(names(df_raw))
+  pick <- c("collection_number","lng","lon","longitude","lat","latitude","max_ma","min_ma")
+  have <- intersect(cols, pick)
+  # Serialize in a stable way
+  digest::digest(df_raw[, have, drop = FALSE])
+}
+  
   # ---- Welcome ----
   output$welcome_counts <- renderUI({
     n_occ  <- nrow(occ)
@@ -907,7 +1056,7 @@ server <- function(input, output, session) {
   
   output$table_occ <- renderDT({
     df <- occ_filtered()
-    show_cols <- c("collection_number","collection_no","name_display","order","superorder","family","genus","rank","status",
+    show_cols <- c("collection_number","name_display","order","superorder","family","genus","rank","status",
                    "early_period","late_period","early_epoch","late_epoch",
                    "early_interval","late_interval","max_ma","min_ma","age_range_any",
                    "continent","paleoocean","age_evaluation","taxonomy_validation","evidence_validation",
@@ -957,6 +1106,7 @@ server <- function(input, output, session) {
                                                choices = present, selected = new_selected, inline = TRUE)
                     }, ignoreInit = FALSE)
   
+  
   # Apply source filter AFTER dynamic choices
   col_filtered <- reactive({
     out <- col_pool()
@@ -973,9 +1123,10 @@ server <- function(input, output, session) {
     if (nrow(pts) == 0) { leafletProxy("map_col") %>% clearMarkers() %>% clearControls(); return() }
     leafletProxy("map_col") %>% clearMarkers() %>% clearControls() %>%
       addCircleMarkers(
-        data = pts, lng = ~longitude, lat = ~latitude,
+        data = pts %>% mutate(source_chr = as.character(collection_source)),
+        lng = ~longitude, lat = ~latitude,
         radius = 5, opacity = 0.9, fillOpacity = 0.6,
-        color = ~pal_source(collection_source),
+        color = ~ifelse(is.na(source_chr), "#808080", pal_source(source_chr)),  # Default to gray for NA
         popup = ~paste0(
           "<b>Collection ", (collection_number %||% coll_id %||% "ID?"), "</b><br/>",
           "Period: ", (early_period %||% ""), " – ", (late_period %||% ""), "<br/>",
@@ -988,6 +1139,8 @@ server <- function(input, output, session) {
         values = factor(source_levels, levels = source_levels),
         title = "Collection source", opacity = 0.9
       )
+    
+    
   })
   
   # Fossil types (S1) bar
@@ -1102,7 +1255,7 @@ server <- function(input, output, session) {
     if (!n) return(data.frame())
     
     # 1) Find the header line by counting known PBDB tokens on each line
-    header_tokens <- c("collection_no","collection_number","collection_name",
+    header_tokens <- c("collection_number", "collection_no","collection_name",
                        "lng","lat","early_interval","late_interval","max_ma","min_ma","cc","state")
     
     count_tokens <- function(s) {
@@ -1189,7 +1342,7 @@ server <- function(input, output, session) {
   # PBDB -> FINS Collections transformer (keeps only the requested columns)
   process_pbdb_collections <- function(df, keep_only_needed = TRUE) {
     names(df) <- tolower(names(df))
-    needed <- c("collection_no","formation","lng","lat","collection_name","collection_aka",
+    needed <- c("collection_number","formation","lng","lat","collection_name","collection_aka",
                 "early_interval","late_interval","max_ma","min_ma","cc","state",
                 "latlng_basis","geogcomments")
     df <- ensure_cols(df, needed)
@@ -1206,8 +1359,8 @@ server <- function(input, output, session) {
     }
     
     out <- tibble::tibble(
-      collection_number   = ifelse(!is.na(df[["collection_no"]]),
-                                   paste0("PBDB_", df[["collection_no"]]),
+      collection_number   = ifelse(!is.na(df[["collection_number"]]),
+                                   paste0("PBDB_", df[["collection_number"]]),
                                    NA_character_),
       formation           = df[["formation"]],
       longitude           = suppressWarnings(as.numeric(df[["lng"]])),
@@ -1241,7 +1394,7 @@ server <- function(input, output, session) {
     # columns we may reference below (add as NA if missing)
     needed <- c(
       "occurrence_no","occurrence_id",
-      "collection_no","collection_number",
+      "collection_number",
       "identified_name","taxon_name","accepted_name",
       "genus","family","order","superorder","rank","status",
       "lng","lat","early_interval","late_interval","max_ma","min_ma", "reference"
@@ -1254,8 +1407,8 @@ server <- function(input, output, session) {
     occurrence_number <- ifelse(!is.na(occ_no_chr) & occ_no_chr != "",
                                 paste0("PBDB_", occ_no_chr), NA_character_)
     
-    # IMPORTANT: Build coll_id STRICTLY from the occurrences file's collection_no (fallback to collection_number)
-    colno_raw <- if (!all(is.na(df[["collection_no"]]))) df[["collection_no"]] else df[["collection_number"]]
+    # IMPORTANT: Build coll_id STRICTLY from the occurrences file's collection_number (fallback to collection_number)
+    colno_raw <- if (!all(is.na(df[["collection_number"]]))) df[["collection_number"]] else df[["collection_number"]]
     colno_chr <- suppressWarnings(as.character(colno_raw))
     coll_id <- ifelse(!is.na(colno_chr) & colno_chr != "",
                       paste0("PBDB_", colno_chr), NA_character_)
@@ -1263,8 +1416,8 @@ server <- function(input, output, session) {
     
     out <- tibble::tibble(
       occurrence_number = occurrence_number,
-      coll_id           = coll_id,                 # <- from collection_no in the occurrences file
-      collection_no     = coll_id,
+      coll_id           = coll_id,                 # <- from collection_number in the occurrences file
+      collection_number     = coll_id,
       identified_name   = df[["identified_name"]],
       genus             = df[["genus"]],
       family            = df[["family"]],
@@ -1303,8 +1456,22 @@ server <- function(input, output, session) {
     # --- normalize names & ensure needed raw cols exist ---
     df <- df_raw
     names(df) <- tolower(names(df))
-    needed <- c("collection_no","formation","lng","lat","collection_name","collection_aka",
-                "early_interval","late_interval","max_ma","min_ma","cc","state","latlng_basis","geogcomments", "ref_author")
+    syn_map <- list(
+      collection_no  = "collection_number",
+      "collection_no." = "collection_number",
+      longitude      = "lng",
+      lon            = "lng",
+      latitude       = "lat",
+      cc2            = "cc"      # sometimes appears
+    )
+    for (s in names(syn_map)) {
+      if (s %in% names(df) && !(syn_map[[s]] %in% names(df))) {
+        df[[ syn_map[[s]] ]] <- df[[ s ]]
+      }
+    }
+    needed <- c("collection_number","formation","lng","lat","collection_name","collection_aka",
+                "early_interval","late_interval","max_ma","min_ma","cc","state",
+                "latlng_basis","geogcomments","ref_author","member","stratscale")
     df <- ensure_cols(df, needed)
     
     # --- helpers ---
@@ -1322,10 +1489,6 @@ server <- function(input, output, session) {
     # late_interval: fill from early_interval if missing
     late_final <- dplyr::coalesce(df[["late_interval"]], df[["early_interval"]])
     m_late_from_early <- is.na(df[["late_interval"]]) & !is.na(df[["early_interval"]])
-    
-    # collection_number from collection_no
-    coll_num <- ifelse(!is.na(df[["collection_no"]]), paste0("PBDB_", df[["collection_no"]]), NA_character_)
-    m_collection_number <- !is.na(df[["collection_no"]]) & !is.na(coll_num)
     
     # comments
     comments <- join_comments(df[["latlng_basis"]], df[["geogcomments"]])
@@ -1377,66 +1540,151 @@ server <- function(input, output, session) {
     lat_num <- suppressWarnings(as.numeric(coalesce_col(df, c("lat", "latitude"))))
     lon_num <- suppressWarnings(as.numeric(coalesce_col(df, c("lng", "lon", "longitude"))))
     
-    # --- paleocoordinates (optional; off by default) ---
+    # --- paleocoordinates (optional; reused if already cached) ---
     paleolon   <- rep(NA_real_, length(lat_num))
     paleolat   <- rep(NA_real_, length(lat_num))
     m_paleo    <- rep(FALSE,     length(lat_num))
-    paleo_note <- rep(NA_character_, length(lat_num))   # ← reason per row
+    paleo_note <- rep(NA_character_, length(lat_num))
     
     do_paleo <- isTRUE("compute" %in% (input$pbdb_col_paleo %||% character(0)))
     
-    if (do_paleo) {
-      if (!requireNamespace("rgplates", quietly = TRUE)) {
-        showNotification("rgplates not available — paleocoordinates skipped.", type = "warning", duration = 8)
+    # 2a) Try to pull from cache first
+    key <- .make_paleo_key(df_raw)
+    if (!is.null(key) && !is.null(rv$paleo_cache[[key]])) {
+      cached <- rv$paleo_cache[[key]]
+      # Match by collection_number (PBDB_*), fall back to row order if needed
+      coll_ids_raw <- if (!all(is.na(df[["collection_number"]]))) df[["collection_number"]] else NA
+      coll_ids_std <- ifelse(!is.na(coll_ids_raw), paste0("PBDB_", coll_ids_raw), NA_character_)
+      if (!is.null(cached$collection_number) && any(!is.na(coll_ids_std))) {
+        m <- match(coll_ids_std, cached$collection_number)
+        okm <- is.finite(m)
+        paleolon[okm] <- cached$paleolongitude[m[okm]]
+        paleolat[okm] <- cached$paleolatitude[m[okm]]
+        m_paleo[okm]  <- is.finite(paleolon[okm]) & is.finite(paleolat[okm])
+        paleo_note[okm] <- ifelse(m_paleo[okm], "from cache", NA_character_)
+      } else if (length(cached$paleolongitude) == length(paleolon)) {
+        # fallback: same row order
+        paleolon <- cached$paleolongitude
+        paleolat <- cached$paleolatitude
+        m_paleo  <- is.finite(paleolon) & is.finite(paleolat)
+        paleo_note[m_paleo] <- "from cache"
+      }
+    }
+    
+    # 2b) Only compute missing rows if user ticked 'compute' AND rgplates is available
+    need_compute <- do_paleo && any(!m_paleo) && requireNamespace("rgplates", quietly = TRUE)
+    
+    if (need_compute) {
+      withProgress(message = "Reconstructing paleocoordinates…", value = 0, {
+        n <- length(lat_num)
+        for (i in seq_len(n)) {
+          if (m_paleo[i]) { incProgress(1/n); next }  # already filled from cache
+          res <- .paleo_mc_median(
+            lon    = lon_num[i],
+            lat    = lat_num[i],
+            min_ma = max_ma_num[i],  # PBDB: max=older, min=younger
+            max_ma = min_ma_num[i],
+            n = 30
+          )
+          paleolon[i]   <- res$xy[1]
+          paleolat[i]   <- res$xy[2]
+          m_paleo[i]    <- isTRUE(res$ok)
+          paleo_note[i] <- res$reason
+          incProgress(1/n)
+        }
+      })
+      
+      # Store/refresh cache for this file
+      if (!is.null(key)) {
+        rv$paleo_cache[[key]] <- list(
+          collection_number = ifelse(!is.na(df[["collection_number"]]),
+                                     paste0("PBDB_", df[["collection_number"]]),
+                                     NA_character_),
+          paleolongitude = paleolon,
+          paleolatitude  = paleolat
+        )
+      }
+    } else if (do_paleo && !requireNamespace("rgplates", quietly = TRUE)) {
+      showNotification("rgplates not available — using cached paleocoordinates (if any).", type = "warning", duration = 8)
+    }
+    
+    # --- paleoocean assignment (mode of 30 epochs) using EXISTING paleocoords ---
+    paleoocean   <- rep(NA_character_, length(lat_num))
+    m_paleoocean <- rep(FALSE, length(lat_num))
+    
+    do_ocean <- isTRUE("ocean" %in% (input$pbdb_col_paleo %||% character(0)))
+    
+    if (do_ocean) {
+      # Require paleocoords first
+      have_coords <- is.finite(paleolon) & is.finite(paleolat)
+      n_have <- sum(have_coords, na.rm = TRUE)
+      if (n_have == 0) {
+        showNotification(
+          "Assign paleooceans: compute paleocoordinates first (toggle above).",
+          type = "error", duration = 8
+        )
       } else {
-        withProgress(message = "Reconstructing paleocoordinates…", value = 0, {
+        withProgress(message = "Assigning paleooceans from existing paleocoords (30×)…", value = 0, {
           n <- length(lat_num)
           for (i in seq_len(n)) {
-            res <- .paleo_mc_median(
-              lon    = lon_num[i],
-              lat    = lat_num[i],
-              min_ma = max_ma_num[i],   # (PBDB uses max/min as older/younger; your code already set these)
-              max_ma = min_ma_num[i],
-              n = 30
-            )
-            paleolon[i]   <- res$xy[1]
-            paleolat[i]   <- res$xy[2]
-            m_paleo[i]    <- isTRUE(res$ok)
-            paleo_note[i] <- res$reason
+            if (!have_coords[i]) { incProgress(1/n); next }
+            
+            # sample ages from [max_ma, min_ma] (PBDB max=older)
+            a_min <- suppressWarnings(min(max_ma_num[i], min_ma_num[i], na.rm = TRUE))
+            a_max <- suppressWarnings(max(max_ma_num[i], min_ma_num[i], na.rm = TRUE))
+            if (!is.finite(a_min) || !is.finite(a_max)) { incProgress(1/n); next }
+            
+            ages <- if (a_min == a_max) rep(a_min, 30) else stats::runif(30, min = a_min, max = a_max)
+            epochs <- vapply(ages, .epoch_from_age_ma, character(1))
+            
+            # classify each replicate using FIXED coords from earlier step
+            oceans_i <- vapply(epochs, function(ep) {
+              .classify_ocean(ep, paleolon[i], paleolat[i])
+            }, character(1))
+            
+            oce_mode <- .mode1(oceans_i)
+            if (!is.na(oce_mode)) {
+              paleoocean[i]   <- oce_mode
+              m_paleoocean[i] <- TRUE
+            }
             incProgress(1/n)
           }
         })
         
-        # Popup summary
-        ok <- sum(m_paleo, na.rm = TRUE); n <- length(m_paleo)
-        showNotification(sprintf("Paleocoordinates computed for %d/%d rows.", ok, n),
-                         type = if (ok > 0) "message" else "warning", duration = 8)
+        # Notify and diagnostics
+        ok_o <- sum(m_paleoocean, na.rm = TRUE); n <- length(m_paleoocean)
+        showNotification(sprintf("Paleooceans assigned for %d/%d rows (mode of 30).", ok_o, n),
+                         type = if (ok_o > 0) "message" else "warning", duration = 6)
         
-        # Show a modal with the top issues (first 15 failures)
-        if (ok < n) {
-          fail_idx <- which(!m_paleo)
-          # pull a useful identifier if available
-          id_vec <- coalesce_col(df, c("collection_no", "collection_number", "collection_name"))
-          diag_tbl <- data.frame(
-            row = fail_idx,
-            collection = as.character(id_vec[fail_idx]),
-            reason = paleo_note[fail_idx],
-            lon = lon_num[fail_idx],
-            lat = lat_num[fail_idx],
-            min_ma = max_ma_num[fail_idx],
-            max_ma = min_ma_num[fail_idx],
-            stringsAsFactors = FALSE
-          )
-          diag_tbl <- head(diag_tbl, 15)
-          showModal(modalDialog(
-            title = sprintf("Paleocoord diagnostics (%d failed)", length(fail_idx)),
-            div(style = "max-height:60vh; overflow:auto;",
-                renderTable(diag_tbl, striped = TRUE, bordered = TRUE, spacing = "s")),
-            easyClose = TRUE, size = "l"
-          ))
+        if (ok_o < n) {
+          fail_idx <- which(!m_paleoocean & have_coords)
+          if (length(fail_idx)) {
+            id_vec <- coalesce_col(df, c("collection_number", "collection_number", "collection_name"))
+            diag_tbl <- data.frame(
+              row = head(fail_idx, 15),
+              collection = as.character(id_vec[head(fail_idx, 15)]),
+              paleolon = paleolon[head(fail_idx, 15)],
+              paleolat = paleolat[head(fail_idx, 15)],
+              min_ma = max_ma_num[head(fail_idx, 15)],
+              max_ma = min_ma_num[head(fail_idx, 15)],
+              stringsAsFactors = FALSE
+            )
+            mk_table <- function(df) {
+              hdr <- paste0("<tr>", paste(sprintf("<th>%s</th>", names(df)), collapse = ""), "</tr>")
+              rows <- apply(df, 1, function(r) paste0("<tr>", paste(sprintf("<td>%s</td>", r), collapse = ""), "</tr>"))
+              HTML(paste0("<table class='table table-striped table-bordered'>", hdr, paste(rows, collapse = ""), "</table>"))
+            }
+            
+            showModal(modalDialog(
+              title = sprintf("Paleoocean diagnostics (%d failed with coords present)", length(fail_idx)),
+              div(style = "max-height:60vh; overflow:auto;", mk_table(diag_tbl)),
+              easyClose = TRUE, size = "l"
+            ))
+          }
         }
       }
     }
+    
     
     
     
@@ -1458,7 +1706,11 @@ server <- function(input, output, session) {
 
     # --- build output frame ---
     out <- tibble::tibble(
-      collection_number   = coll_num,
+      collection_number   = dplyr::if_else(
+        !is.na(df[["collection_number"]]) & df[["collection_number"]] != "",
+        paste0("PBDB_", as.character(df[["collection_number"]])),
+        NA_character_
+      ),
       formation           = df[["formation"]],
       longitude           = suppressWarnings(as.numeric(df[["lng"]])),
       latitude            = lat_num,
@@ -1484,11 +1736,13 @@ server <- function(input, output, session) {
       collection_source   = collection_source,
       reference           = df[["ref_author"]],
       paleolatitude       = paleolat,
-      paleolongitude      = paleolon
+      paleolongitude      = paleolon,
+      paleoocean          = paleoocean,
+      member              = df[["member"]],
+      stratscale          = df[["stratscale"]]
     )
     
     # mask columns (same length as out)
-    out$m_collection_number    <- m_collection_number
     out$m_collection_comments  <- m_collection_comments
     out$m_continent            <- m_continent
     out$m_latitudinal_band     <- m_lat_band
@@ -1503,6 +1757,7 @@ server <- function(input, output, session) {
     out$m_early_era     <- m_early_era
     out$m_late_era      <- m_late_era
     out$m_paleocoords   <- m_paleo
+    out$m_paleoocean <- m_paleoocean
 
     
     out
@@ -1547,7 +1802,6 @@ server <- function(input, output, session) {
       }
     }
     
-    color_cell("collection_number",   "m_collection_number")
     color_cell("collection_comments", "m_collection_comments")
     color_cell("continent",           "m_continent")
     color_cell("latitude_band",    "m_latitudinal_band")
@@ -1563,17 +1817,10 @@ server <- function(input, output, session) {
     color_cell("late_era",     "m_late_era")
     color_cell("paleolatitude",  "m_paleocoords")
     color_cell("paleolongitude", "m_paleocoords")
+    color_cell("paleoocean", "m_paleoocean")
     
     dt
   })
-  
-  output$pbdb_col_status <- renderUI({
-    tags$div(style="font-size:12px;margin-top:6px;",
-             tags$span(style="display:inline-block;width:14px;height:14px;background:#fff7e6;border:1px solid #f2e1cc;margin-right:6px;"),
-             "Cells highlighted = filled/derived by the app"
-    )
-  })
-  
   
   output$pbdb_col_status <- renderUI({
     n <- nrow(pbdb_col_aligned())
@@ -1598,6 +1845,68 @@ server <- function(input, output, session) {
     req(input$pbdb_occ_file)
     read_pbdb_csv(input$pbdb_occ_file, header = TRUE, delim_choice = "Auto")
   })
+  
+  # ---- OCCURRENCES ↔ COLLECTIONS cross-check on upload ----
+  observeEvent(pbdb_occ_raw(), {
+    df_raw <- pbdb_occ_raw()
+    if (is.null(df_raw) || !nrow(df_raw)) return()
+    
+    # Normalize header names to be safe
+    nms <- tolower(names(df_raw))
+    
+    # Pull collection_number (or collection_number as fallback) from the uploaded OCC file
+    coll_no_vec <- if ("collection_number" %in% nms) df_raw[[which(nms == "collection_number")[1]]] else
+      if ("collection_number" %in% nms) df_raw[[which(nms == "collection_number")[1]]] else NA
+    
+    # Make PBDB_ prefixed coll_ids from the occurrences upload
+    coll_no_chr <- suppressWarnings(as.character(coll_no_vec))
+    occ_coll_ids <- unique(na.omit(ifelse(!is.na(coll_no_chr) & coll_no_chr != "",
+                                          paste0("PBDB_", coll_no_chr),
+                                          NA_character_)))
+    
+    # Collection IDs currently known in the Collections tab
+    # Prefer rv$col$coll_id if present, else rv$col$collection_number
+    known_ids <- character(0)
+    if ("coll_id" %in% names(rv$col)) {
+      known_ids <- rv$col$coll_id
+    } else if ("collection_number" %in% names(rv$col)) {
+      known_ids <- rv$col$collection_number
+    }
+    known_ids <- unique(na.omit(as.character(known_ids)))
+    
+    # Compute missing IDs
+    missing_ids <- setdiff(occ_coll_ids, known_ids)
+    
+    if (length(missing_ids) > 0) {
+      # Brief toast
+      showNotification(
+        sprintf("Occurrences refer to %d collection(s) not present in the Collections tab.", length(missing_ids)),
+        type = "error", duration = 8
+      )
+      
+      # Modal with the full list (cap display to first 200 for readability)
+      to_show <- head(sort(missing_ids), 200)
+      extras  <- if (length(missing_ids) > 200)
+        sprintf("…and %d more not shown.", length(missing_ids) - 200) else ""
+      
+      showModal(modalDialog(
+        title = sprintf("%d missing collection(s) in Collections", length(missing_ids)),
+        div(
+          p("These collection IDs are referenced by the uploaded Occurrences but do not exist in the current Collections data. ",
+            "Please append the missing Collections first, then re-upload the Occurrences."),
+          tags$hr(),
+          tags$strong("Missing collection IDs (PBDB_*):"),
+          tags$pre(paste(to_show, collapse = "\n")),
+          if (nzchar(extras)) p(em(extras))
+        ),
+        easyClose = TRUE, size = "l"
+      ))
+    } else {
+      # (Optional) Small positive toast when everything matches
+      showNotification("All occurrence collections are present in the Collections tab ✔️", type = "message", duration = 4)
+    }
+  })
+  
   
   pbdb_occ_processed <- reactive({
     df <- pbdb_occ_raw()
@@ -1640,6 +1949,71 @@ server <- function(input, output, session) {
       })
     }
   })
+  
+  # ----- Apply PBDB Collections to in-memory data -----
+  observeEvent(input$pbdb_col_apply, {
+    mode <- input$pbdb_col_mode
+    
+    # 1) Use the preview as-is, without re-triggering any rgplates work
+    df_new <- isolate(pbdb_col_aligned())
+    df_new <- df_new %>% dplyr::select(-tidyselect::matches("^m_"))
+    req(!is.null(df_new), nrow(df_new) > 0)
+    
+    # 2) Make sure coll_id exists and is consistent
+    if (!"coll_id" %in% names(df_new)) df_new$coll_id <- NA_character_
+    df_new <- df_new %>%
+      dplyr::mutate(
+        coll_id = dplyr::coalesce(as.character(coll_id),
+                                  as.character(collection_number),
+                                  as.character(collection_number))
+      )
+    
+    # 3) Keep collection_source consistent
+    if ("collection_source" %in% names(df_new)) {
+      df_new$collection_source <- as.character(df_new$collection_source)
+    }
+    
+    # 4) Append/replace safely without factor clashes
+    keep_cols <- union(names(rv$col), names(df_new))
+    if (mode == "append") {
+      rv$col <- dplyr::bind_rows(
+        tibble::as_tibble(rv$col),
+        tibble::as_tibble(df_new)
+      )
+    } else if (mode == "replace") {
+      rv$col <- tibble::as_tibble(df_new)
+    } else {
+      return(invisible(NULL))
+    }
+    
+    num_cols <- c("longitude","latitude","max_ma","min_ma","age_range","paleolatitude","paleolongitude")
+    for (nm in intersect(num_cols, names(rv$col))) {
+      rv$col[[nm]] <- suppressWarnings(as.numeric(rv$col[[nm]]))
+    }
+    
+    # 5) Standardize factor after merge (palette depends on these levels)
+    if ("collection_source" %in% names(rv$col)) {
+      rv$col$collection_source <- factor(rv$col$collection_source,
+                                         levels = c("PBDB","Literature","PBDB_U"))
+    }
+    
+    showNotification(
+      sprintf("Collections %s: %s rows now in memory.",
+              if (mode == "append") "appended" else "replaced",
+              format(nrow(rv$col), big.mark=",")),
+      type = "message", duration = 5
+    )
+    
+    isolate({
+      if (isTRUE(input$sync_col_with_occ)) {
+        showNotification(
+          "Note: 'Sync with current Occurrence filters' is ON — new Collections may be hidden if no current occurrences reference them.",
+          type = "warning", duration = 7
+        )
+      }
+    })
+  })
+  
   
 }
 
