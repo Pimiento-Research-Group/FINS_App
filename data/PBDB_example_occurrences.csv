@@ -1,0 +1,32 @@
+Data Provider,The Paleobiology Database,,,,,,,,,,,,,,,,,
+Data Source,The Paleobiology Database,,,,,,,,,,,,,,,,,
+Data License,Creative Commons CC0,,,,,,,,,,,,,,,,,
+License URL,https://creativecommons.org/publicdomain/zero/1.0/,,,,,,,,,,,,,,,,,
+Documentation URL,http://paleobiodb.org/data1.2/occs/list_doc.html,,,,,,,,,,,,,,,,,
+Data URL,"http://paleobiodb.org/data1.2/occs/list.csv?datainfo&rowcount&base_name=neoselachii&occs_created_after=2021&show=coll,refattr&all_records",,,,,,,,,,,,,,,,,
+Access Time,Wed 2025-10-22 07:32:20 GMT,,,,,,,,,,,,,,,,,
+Title,PBDB Data Service,,,,,,,,,,,,,,,,,
+Parameters:,,,,,,,,,,,,,,,,,,
+,all_records,1,,,,,,,,,,,,,,,,
+,base_name,neoselachii,,,,,,,,,,,,,,,,
+,timerule,major,,,,,,,,,,,,,,,,
+,occs_created_after,01/01/2021 00:00,,,,,,,,,,,,,,,,
+,taxon_status,all,,,,,,,,,,,,,,,,
+,show,"coll,refattr",,,,,,,,,,,,,,,,
+Elapsed Time,0.168,,,,,,,,,,,,,,,,,
+Records Found,1958,,,,,,,,,,,,,,,,,
+Records Returned,1958,,,,,,,,,,,,,,,,,
+Records:,,,,,,,,,,,,,,,,,,
+occurrence_no,record_type,reid_no,flags,collection_no,identified_name,identified_rank,identified_no,difference,accepted_name,accepted_rank,accepted_no,early_interval,late_interval,max_ma,min_ma,ref_author,ref_pubyr,reference_no
+381995,occ,42646,,36256,Scapanorhynchus rapax,species,501385,,Scapanorhynchus rapax,species,124943,Maastrichtian,,72.2,66,Herman 1977,1977,30945
+586567,occ,40466,,61844,Cristomylus cifellii,species,379950,,Cristomylus cifellii,species,379950,Middle Campanian,,83.6,72.2,Kirkland et al. 2013,2013,67598
+823540,occ,42545,,90731,Paracorax unilateralis,species,511039,,Paracorax unilateralis,species,511039,Early Campanian,,83.6,72.2,Averianov 1997,1997,92523
+1211871,occ,39601,,157353,Cretalamna sp.,genus,425345,,Cretalamna,genus,34608,Early Campanian,,83.6,72.2,Ebersole et al. 2022,2022,81381
+1254298,occ,39920,,166013,Protolamna sp.,genus,34629,,Protolamna,genus,34629,Barremian,Albian,125.77,100.5,Srarfi et al. 2004,2004,82497
+1413360,occ,37997,,175734,Galeocerdo eaglesomei,species,174776,,Galeocerdo eaglesomei,species,174776,Bartonian,,41.03,37.71,Zouhri et al. 2021,2021,75886
+1526437,occ,42659,,213713,Protoscyliorhinus bettrechiensis,species,425842,,Protoscyliorhinus bettrechiensis,species,425842,Late Cenomanian,,100.5,93.9,Herman 1977,1977,30945
+1526446,occ,42546,,213715,Paracorax unilateralis,species,511039,,Paracorax unilateralis,species,511039,Early Campanian,,83.6,72.2,Averianov 1997,1997,92523
+1545927,occ,,,217346,Carcharias sp.,genus,64190,,Carcharias,genus,64190,Tortonian,,11.63,7.246,Goolaerts et al. 2020,2020,75494
+1545928,occ,,,217346,Sphyrna sp.,genus,34664,,Sphyrna,genus,34664,Tortonian,,11.63,7.246,Goolaerts et al. 2020,2020,75494
+1545931,occ,,,217346,Cosmopolitodus hastalis,species,390781,recombined as,Carcharodon hastalis,species,80595,Tortonian,,11.63,7.246,Goolaerts et al. 2020,2020,75494
+1545932,occ,,,217346,Isurus retroflexus,species,377139,,Isurus retroflexus,species,132705,Tortonian,,11.63,7.246,Goolaerts et al. 2020,2020,75494
