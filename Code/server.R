@@ -276,9 +276,16 @@ server <- function(input, output, session) {
   })
   
   output$map_occ <- renderLeaflet({ 
-    leaflet() %>% 
+    leaflet(options = leafletOptions(
+      worldCopyJump = FALSE,
+      maxBounds = list(list(-180, -90), list(180, 90)),
+      maxBoundsViscosity = 1.0,
+      minZoom = 2,        # ← Can't zoom OUT past level 2
+      maxZoom = 18        # ← Can zoom IN to street level
+    )) %>% 
       addProviderTiles("Esri.WorldImagery") %>%
-      setView(lng = 0, lat = 20, zoom = 2)  # Center on global view
+      setView(lng = 0, lat = 20, zoom = 2) %>%
+      setMaxBounds(lng1 = -180, lat1 = -90, lng2 = 180, lat2 = 90)  # Restrict view to one Earth
   })
   outputOptions(output, "map_occ", suspendWhenHidden = FALSE)
   
@@ -371,9 +378,14 @@ server <- function(input, output, session) {
   })
   
   output$map_col <- renderLeaflet({ 
-    leaflet() %>% 
+    leaflet(options = leafletOptions(
+      worldCopyJump = FALSE,
+      maxBounds = list(list(-180, -90), list(180, 90)),
+      maxBoundsViscosity = 1.0
+    )) %>% 
       addProviderTiles("Esri.WorldImagery") %>%
-      setView(lng = 0, lat = 20, zoom = 2)
+      setView(lng = 0, lat = 20, zoom = 2) %>%
+      setMaxBounds(lng1 = -180, lat1 = -90, lng2 = 180, lat2 = 90)
   })
   outputOptions(output, "map_col", suspendWhenHidden = FALSE)
   
