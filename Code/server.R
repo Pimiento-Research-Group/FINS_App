@@ -154,14 +154,34 @@ server <- function(input, output, session) {
   output$readme_ui_about <- renderUI({
     readme_path <- here::here("data", "README_about.md")
     if (file.exists(readme_path)) {
-      HTML(markdown::markdownToHTML(readme_path, fragment.only = TRUE))
+      # Read the markdown file
+      content <- paste(readLines(readme_path, warn = FALSE), collapse = "\n")
+      
+      # Remove "How to cite" section and everything after it
+      # This removes both "How to cite FINS?" and "Contact us" sections
+      content <- gsub("#### How to cite.*$", "", content, ignore.case = TRUE)
+      content <- gsub("#### Contact us.*$", "", content, ignore.case = TRUE)
+      
+      # Also try with different header levels
+      content <- gsub("### How to cite.*$", "", content, ignore.case = TRUE)
+      content <- gsub("### Contact us.*$", "", content, ignore.case = TRUE)
+      content <- gsub("## How to cite.*$", "", content, ignore.case = TRUE)
+      content <- gsub("## Contact us.*$", "", content, ignore.case = TRUE)
+      
+      # Convert to HTML
+      HTML(markdown::markdownToHTML(text = content, fragment.only = TRUE))
     } else {
+      # Default About content if file doesn't exist
       tags$div(
-        p("Place a ", code("README_about.md"), " file in the data directory to display a project guide here."),
+        p(strong("FINS"), " (FossIl NeoselachianS) is a comprehensive global database of fossil sharks, rays, and skates."),
+        h5("Database Contents"),
         tags$ul(
-          tags$li("Include data sources, curation rules, and a field glossary."),
-          tags$li("Document normalization logic for reference keys (S1–S3).")
-        )
+          tags$li("Fossil occurrence records with detailed taxonomic information"),
+          tags$li("Collection localities with geographic coordinates"),
+          tags$li("Temporal data spanning from the Cretaceous to the Quaternary"),
+          tags$li("References to scientific literature")
+        ),
+        p(em("Note: Create a README_about.md file in the data directory to customize this content."))
       )
     }
   })
@@ -169,10 +189,18 @@ server <- function(input, output, session) {
   output$readme_ui_guide <- renderUI({
     readme_path <- here::here("data", "README_guide.md")
     if (file.exists(readme_path)) {
+      # Read and display the guide as-is
       HTML(markdown::markdownToHTML(readme_path, fragment.only = TRUE))
     } else {
+      # Default Guide content if file doesn't exist
       tags$div(
-        p("Place a ", code("README_guide.md"), " file in the data directory to display a project guide here.")
+        p("To contribute new fossil occurrence data to the FINS database:"),
+        tags$ol(
+          tags$li(strong("Navigate to the 'Add data' tab")),
+          tags$li(strong("Upload PBDB Collections:"), " Choose your PBDB Collections CSV file"),
+          tags$li(strong("Preview and apply:"), " Review the data alignment and click 'Apply Collections'")
+        ),
+        p(em("Note: Create a README_guide.md file in the data directory to customize this guide."))
       )
     }
   })

@@ -17,8 +17,8 @@ The Fossil Neoselachian (FINS) dataset is a comprehensive, systematically curate
 
 #### What data does FINS include?
 
-FINS consists of fossil occurrences, each linked to a collection (location  where fossils were reported from) and a source (citation of the publications from which data was obtained). 
-ll data was subjected to a meticulous curation process, which is described through taxonomic and age validation variables.
+FINS consists of fossil occurrences, each linked to a collection (location where fossils were reported from) and a source (citation of the publications from which data was obtained). 
+All data was subjected to a meticulous curation process, which is described through taxonomic and age validation variables.
 
 **`Occurrences`**  
 Occurrence data mostly consists of taxonomic variables (e.g., classification, names and ranks), each linked to collections and references
@@ -29,21 +29,8 @@ Collection data provide geographic (e.g., country, ocean and paleo-coordinates) 
 **`References`**  
 Reference data consists of the full citation of the publications from which data was obtained.
 
-**`Add data`** 
-
+**`Add data`**
 
 #### What FINS' spatial and temporal span?
 
-FINS spans the the entire globe, with fossil occurrences recovered from all continents from the Cretaceous to the Quaternary (145 – 0 Ma), with temporal resolution generally corresponding to geological stages or epochs. 
-
-#### How to cite FINS?
-Kocakova et al.
-FINS - A global occurrence dataset of fossil sharks, rays and skates from the Cretaceous to the Quaternary
-
-#### Contact us
-
-If you would like to report an error or provide a suggestion on how to improve our platform please contact us via the email below.
-
-**To import new data please refer to the "Import new data" tab.**
-
-\*Corresponding author: [kristina.kocakova@pim.uzh.ch](mailto:kristina.kocakova@pim.uzh.ch)
+FINS spans the entire globe, with fossil occurrences recovered from all continents from the Cretaceous to the Quaternary (145 – 0 Ma), with temporal resolution generally corresponding to geological stages or epochs.

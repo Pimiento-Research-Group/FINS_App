@@ -36,13 +36,24 @@ ui <- tagList(
                p("This app allows users to explore and add data to the FINS dataset, which consists of fossil occurrences, each linked to a collection and reference."),
                tags$hr(),
                fluidRow(
-                 column(6, wellPanel(
+                 column(4, wellPanel(
                    h4("About"),
                    uiOutput("readme_ui_about")
                  )),
-                 column(6, wellPanel(
+                 column(4, wellPanel(
                    h4("Guide to adding new data"),
                    uiOutput("readme_ui_guide")
+                 )),
+                 column(4, wellPanel(
+                   h4("How to cite & Contact"),
+                   tags$div(
+                     h5("How to cite FINS?"),
+                     p("Kocakova et al. FINS - A global occurrence dataset of fossil sharks, rays and skates from the Cretaceous to the Quaternary"),
+                     tags$hr(),
+                     h5("Contact us"),
+                     p("If you would like to report an error or provide a suggestion on how to improve our platform please contact us via the email below."),
+                     p("*Corresponding author: ", tags$a(href = "mailto:kristina.kocakova@pim.uzh.ch", "kristina.kocakova@pim.uzh.ch"))
+                   )
                  ))
                )
              )
@@ -208,4 +219,3 @@ ui <- tagList(
     )
   )
 )
-
