@@ -65,9 +65,17 @@ ui <- tagList(
                sidebarPanel(
                  h4("Time"),
                  selectizeInput("epochs_occ",  "Epochs",  choices = epoch_choices_occ,  multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_epochs_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_epochs_occ", "Clear All", style = "font-size: 11px;")),
                  helpText("Uses columns: early_epoch & late_epoch"),
+                 
                  selectizeInput("periods_occ", "Periods", choices = period_choices_occ, multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_periods_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_periods_occ", "Clear All", style = "font-size: 11px;")),
                  helpText("Uses columns: early_period & late_period"),
+                 
                  selectizeInput(
                    "age_thresh_occ", "Max age-range (Myr):",
                    choices = c("Any" = "any", "5", "15", "20"),
@@ -78,14 +86,40 @@ ui <- tagList(
                  
                  h4("Geography"),
                  selectizeInput("continent_occ", "Continent:",  choices = continent_choices_occ,  multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_continent_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_continent_occ", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("paleocean_occ", "Paleoocean:", choices = paleoocean_choices_occ, multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_paleocean_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_paleocean_occ", "Clear All", style = "font-size: 11px;")),
                  
                  h4("Taxa & Status"),
                  selectizeInput("order_occ",      "Order:",      choices = order_choices,      multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_order_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_order_occ", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("superorder_occ", "Superorder:", choices = superorder_choices, multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_superorder_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_superorder_occ", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("family_occ",     "Family:",     choices = family_choices,     multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_family_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_family_occ", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("rank_occ",       "Rank:",       choices = rank_choices,       multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_rank_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_rank_occ", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("status_occ",     "Status:",     choices = status_choices,     multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_status_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_status_occ", "Clear All", style = "font-size: 11px;")),
                  
                  h4("Curation & Source"),
                  radioButtons("name_mode_occ", "Name display:",
@@ -132,9 +166,17 @@ ui <- tagList(
                  
                  h4("Time"),
                  selectizeInput("epochs_col",  "Epochs",  choices = epoch_choices_col,  multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_epochs_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_epochs_col", "Clear All", style = "font-size: 11px;")),
                  helpText("Uses columns: early_epoch & late_epoch"),
+                 
                  selectizeInput("periods_col", "Periods", choices = period_choices_col, multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_periods_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_periods_col", "Clear All", style = "font-size: 11px;")),
                  helpText("Uses columns: early_period & late_period"),
+                 
                  selectizeInput(
                    "age_thresh_col", "Max age-range (Myr):",
                    choices = c("Any" = "any", "5", "15", "20"),
@@ -145,7 +187,14 @@ ui <- tagList(
                  
                  h4("Geography"),
                  selectizeInput("continent_col", "Continent:",  choices = continent_choices_col,  multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_continent_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_continent_col", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("paleocean_col", "Paleoocean:", choices = paleoocean_choices_col, multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_paleocean_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_paleocean_col", "Clear All", style = "font-size: 11px;")),
                  
                  h4("Source"),
                  checkboxGroupInput("source_filter_col", "Collection source:",

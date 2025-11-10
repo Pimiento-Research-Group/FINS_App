@@ -206,6 +206,71 @@ server <- function(input, output, session) {
   })
   
   # ----- Occurrences tab -----
+  
+  # Select All / Clear All observers for Occurrences filters
+  observeEvent(input$select_all_epochs_occ, {
+    updateSelectizeInput(session, "epochs_occ", selected = epoch_choices_occ)
+  })
+  observeEvent(input$clear_all_epochs_occ, {
+    updateSelectizeInput(session, "epochs_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_periods_occ, {
+    updateSelectizeInput(session, "periods_occ", selected = period_choices_occ)
+  })
+  observeEvent(input$clear_all_periods_occ, {
+    updateSelectizeInput(session, "periods_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_continent_occ, {
+    updateSelectizeInput(session, "continent_occ", selected = continent_choices_occ)
+  })
+  observeEvent(input$clear_all_continent_occ, {
+    updateSelectizeInput(session, "continent_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_paleocean_occ, {
+    updateSelectizeInput(session, "paleocean_occ", selected = paleoocean_choices_occ)
+  })
+  observeEvent(input$clear_all_paleocean_occ, {
+    updateSelectizeInput(session, "paleocean_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_order_occ, {
+    updateSelectizeInput(session, "order_occ", selected = order_choices)
+  })
+  observeEvent(input$clear_all_order_occ, {
+    updateSelectizeInput(session, "order_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_superorder_occ, {
+    updateSelectizeInput(session, "superorder_occ", selected = superorder_choices)
+  })
+  observeEvent(input$clear_all_superorder_occ, {
+    updateSelectizeInput(session, "superorder_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_family_occ, {
+    updateSelectizeInput(session, "family_occ", selected = family_choices)
+  })
+  observeEvent(input$clear_all_family_occ, {
+    updateSelectizeInput(session, "family_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_rank_occ, {
+    updateSelectizeInput(session, "rank_occ", selected = rank_choices)
+  })
+  observeEvent(input$clear_all_rank_occ, {
+    updateSelectizeInput(session, "rank_occ", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_status_occ, {
+    updateSelectizeInput(session, "status_occ", selected = status_choices)
+  })
+  observeEvent(input$clear_all_status_occ, {
+    updateSelectizeInput(session, "status_occ", selected = character(0))
+  })
+  
   apply_age_thresh_occ <- function(df, choice) {
     if (choice == "any" || !"age_range_any" %in% names(df)) return(df)
     thr <- as.numeric(choice)
@@ -335,6 +400,36 @@ server <- function(input, output, session) {
   )
   
   # ----- Collections tab -----
+  
+  # Select All / Clear All observers for Collections filters
+  observeEvent(input$select_all_epochs_col, {
+    updateSelectizeInput(session, "epochs_col", selected = epoch_choices_col)
+  })
+  observeEvent(input$clear_all_epochs_col, {
+    updateSelectizeInput(session, "epochs_col", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_periods_col, {
+    updateSelectizeInput(session, "periods_col", selected = period_choices_col)
+  })
+  observeEvent(input$clear_all_periods_col, {
+    updateSelectizeInput(session, "periods_col", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_continent_col, {
+    updateSelectizeInput(session, "continent_col", selected = continent_choices_col)
+  })
+  observeEvent(input$clear_all_continent_col, {
+    updateSelectizeInput(session, "continent_col", selected = character(0))
+  })
+  
+  observeEvent(input$select_all_paleocean_col, {
+    updateSelectizeInput(session, "paleocean_col", selected = paleoocean_choices_col)
+  })
+  observeEvent(input$clear_all_paleocean_col, {
+    updateSelectizeInput(session, "paleocean_col", selected = character(0))
+  })
+  
   apply_age_thresh_col <- function(df, choice) {
     if (choice == "any" || !"age_range" %in% names(df)) return(df)
     thr <- as.numeric(choice)
