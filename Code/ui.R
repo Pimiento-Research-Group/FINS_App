@@ -107,10 +107,18 @@ ui <- tagList(
                ),
                mainPanel(
                  fluidRow(
-                   column(4, wellPanel(h5("Counts by source"), tableOutput("source_counts_occ"))),
-                   column(8, wellPanel(h5("Curation snapshot"), htmlOutput("curation_snapshot_occ")))
+                   column(6, wellPanel(
+                     style = "padding: 10px; margin-bottom: 10px;",
+                     h5(style = "margin-top: 0;", "Counts by source"), 
+                     tableOutput("source_counts_occ")
+                   )),
+                   column(6, wellPanel(
+                     style = "padding: 10px; margin-bottom: 10px;",
+                     h5(style = "margin-top: 0;", "Curation snapshot"), 
+                     htmlOutput("curation_snapshot_occ")
+                   ))
                  ),
-                 leafletOutput("map_occ", height = 430),
+                 leafletOutput("map_occ", height = 550),
                  DTOutput("table_occ")
                )
              )

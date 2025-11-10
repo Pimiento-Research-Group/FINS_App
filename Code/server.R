@@ -275,7 +275,11 @@ server <- function(input, output, session) {
                  lab, n, n_updated, ifelse(n>0, 100*n_updated/n, 0)))
   })
   
-  output$map_occ <- renderLeaflet({ leaflet() %>% addTiles() })
+  output$map_occ <- renderLeaflet({ 
+    leaflet() %>% 
+      addProviderTiles("Esri.WorldImagery") %>%
+      setView(lng = 0, lat = 20, zoom = 2)  # Center on global view
+  })
   outputOptions(output, "map_occ", suspendWhenHidden = FALSE)
   
   observe({
@@ -287,8 +291,9 @@ server <- function(input, output, session) {
     leafletProxy("map_occ") %>% clearMarkers() %>% clearControls() %>%
       addCircleMarkers(
         data = pts, lng = ~longitude, lat = ~latitude,
-        radius = 4, opacity = 0.9, fillOpacity = 0.6,
-        color = ~pal_source(source),
+        radius = 5, opacity = 1, fillOpacity = 0.75,
+        color = "#FFFFFF", weight = 1.5,  # White border for visibility on satellite
+        fillColor = ~pal_source(source),
         popup = ~paste0(
           "<b>", name_display %||% "", "</b><br/>",
           "Order: ", order %||% "", "<br/>",
@@ -365,7 +370,11 @@ server <- function(input, output, session) {
     out
   })
   
-  output$map_col <- renderLeaflet({ leaflet() %>% addTiles() })
+  output$map_col <- renderLeaflet({ 
+    leaflet() %>% 
+      addProviderTiles("Esri.WorldImagery") %>%
+      setView(lng = 0, lat = 20, zoom = 2)
+  })
   outputOptions(output, "map_col", suspendWhenHidden = FALSE)
   
   observe({
@@ -378,8 +387,9 @@ server <- function(input, output, session) {
       addCircleMarkers(
         data = pts %>% mutate(source_chr = as.character(collection_source)),
         lng = ~longitude, lat = ~latitude,
-        radius = 5, opacity = 0.9, fillOpacity = 0.6,
-        color = ~ifelse(is.na(source_chr), "#808080", pal_source(source_chr)),
+        radius = 6, opacity = 1, fillOpacity = 0.75,
+        color = "#FFFFFF", weight = 1.5,  # White border for visibility
+        fillColor = ~ifelse(is.na(source_chr), "#808080", pal_source(source_chr)),
         popup = ~paste0(
           "<b>Collection ", (collection_number %||% coll_id %||% "ID?"), "</b><br/>",
           "Period: ", (early_period %||% ""), " – ", (late_period %||% ""), "<br/>",
