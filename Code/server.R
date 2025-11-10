@@ -277,11 +277,11 @@ server <- function(input, output, session) {
   
   output$map_occ <- renderLeaflet({ 
     leaflet(options = leafletOptions(
-      worldCopyJump = FALSE,
-      maxBounds = list(list(-180, -90), list(180, 90)),
-      maxBoundsViscosity = 1.0,
-      minZoom = 2,        # ← Can't zoom OUT past level 2
-      maxZoom = 18        # ← Can zoom IN to street level
+      worldCopyJump = FALSE,     # Prevent jumping between world copies
+      maxBounds = list(list(-180, -90), list(180, 90)),  # Limit panning to one world
+      maxBoundsViscosity = 1.0,   # Make bounds hard (can't pan beyond)
+      minZoom = 2,                # Prevent zooming out beyond initial view
+      maxZoom = 18                # Allow zooming in to street level
     )) %>% 
       addProviderTiles("Esri.WorldImagery") %>%
       setView(lng = 0, lat = 20, zoom = 2) %>%
@@ -298,8 +298,8 @@ server <- function(input, output, session) {
     leafletProxy("map_occ") %>% clearMarkers() %>% clearControls() %>%
       addCircleMarkers(
         data = pts, lng = ~longitude, lat = ~latitude,
-        radius = 5, opacity = 1, fillOpacity = 0.75,
-        color = "#FFFFFF", weight = 1.5,  # White border for visibility on satellite
+        radius = 5, opacity = 0.9, fillOpacity = 0.75,
+        color = "#FFFFFF", weight = 0.5,  # Thin white border
         fillColor = ~pal_source(source),
         popup = ~paste0(
           "<b>", name_display %||% "", "</b><br/>",
@@ -381,7 +381,9 @@ server <- function(input, output, session) {
     leaflet(options = leafletOptions(
       worldCopyJump = FALSE,
       maxBounds = list(list(-180, -90), list(180, 90)),
-      maxBoundsViscosity = 1.0
+      maxBoundsViscosity = 1.0,
+      minZoom = 2,                # Prevent zooming out beyond initial view
+      maxZoom = 18                # Allow zooming in to street level
     )) %>% 
       addProviderTiles("Esri.WorldImagery") %>%
       setView(lng = 0, lat = 20, zoom = 2) %>%
@@ -399,8 +401,8 @@ server <- function(input, output, session) {
       addCircleMarkers(
         data = pts %>% mutate(source_chr = as.character(collection_source)),
         lng = ~longitude, lat = ~latitude,
-        radius = 6, opacity = 1, fillOpacity = 0.75,
-        color = "#FFFFFF", weight = 1.5,  # White border for visibility
+        radius = 6, opacity = 0.9, fillOpacity = 0.75,
+        color = "#FFFFFF", weight = 0.5,  # Thin white border
         fillColor = ~ifelse(is.na(source_chr), "#808080", pal_source(source_chr)),
         popup = ~paste0(
           "<b>Collection ", (collection_number %||% coll_id %||% "ID?"), "</b><br/>",
