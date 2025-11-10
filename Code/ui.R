@@ -63,6 +63,12 @@ ui <- tagList(
     tabPanel("Occurrences",
              sidebarLayout(
                sidebarPanel(
+                 div(
+                   style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #2196F3;",
+                   tags$p(style = "margin: 5px 0 0 0; font-size: 12px;",
+                          "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
+                 ),
+                 
                  h4("Time"),
                  selectizeInput("epochs_occ",  "Epochs",  choices = epoch_choices_occ,  multiple = TRUE),
                  div(style = "margin-top: -10px; margin-bottom: 10px;",
@@ -163,6 +169,13 @@ ui <- tagList(
              sidebarLayout(
                sidebarPanel(
                  checkboxInput("sync_col_with_occ", "Sync with current Occurrence filters", TRUE),
+                 
+                 div(
+                   style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; margin-top: 10px; border-radius: 5px; border-left: 4px solid #2196F3;",
+                   tags$strong("ℹ️ Filter behavior:"),
+                   tags$p(style = "margin: 5px 0 0 0; font-size: 12px;",
+                          "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
+                 ),
                  
                  h4("Time"),
                  selectizeInput("epochs_col",  "Epochs",  choices = epoch_choices_col,  multiple = TRUE),
