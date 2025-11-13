@@ -542,7 +542,7 @@ server <- function(input, output, session) {
   
   output$table_occ <- renderDT({
     df <- occ_filtered()
-    show_cols <- c("collection_number","name_display","order","superorder","family","genus","rank","status",
+    show_cols <- c("collection_number","name_display","superorder","order","family","genus","rank","status",
                    "early_period","late_period","early_epoch","late_epoch",
                    "early_interval","late_interval","max_ma","min_ma","age_range_any",
                    "continent","paleoocean","age_evaluation","taxonomy_validation","evidence_validation",
