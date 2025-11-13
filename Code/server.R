@@ -694,30 +694,61 @@ server <- function(input, output, session) {
   
   output$plot_types_col <- renderPlot({
     df <- col_filtered()
-    if (!"fossil_type" %in% names(df)) {
-      plot.new()
-      title("Fossil types: 'fossil_type' column not found in Data_S1")
-      return()
+    if (!"continent" %in% names(df)) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, 
+                 label = "Continents: 'continent' column not found in Data_S2",
+                 size = 5) +
+        theme_void()
+    } else {
+      tab <- df %>%
+        mutate(continent = ifelse(is.na(continent) | continent == "", "Unknown", continent)) %>%
+        count(continent, name = "n", sort = TRUE) %>%
+        mutate(
+          percentage = round(100 * n / sum(n), 1),
+          label = paste0(n, " (", percentage, "%)")
+        )
+      
+      if (nrow(tab) == 0) {
+        ggplot() + 
+          annotate("text", x = 0.5, y = 0.5, 
+                   label = "Continents: no data",
+                   size = 5) +
+          theme_void()
+      } else {
+        # Create color palette
+        colors <- c(
+          "Africa" = "#e74c3c",
+          "Asia" = "#f39c12", 
+          "Europe" = "#3498db",
+          "North America" = "#2ecc71",
+          "South America" = "#9b59b6",
+          "Oceania" = "#1abc9c",
+          "Antarctica" = "#95a5a6",
+          "Unknown" = "#7f8c8d"
+        )
+        
+        ggplot(tab, aes(x = reorder(continent, n), y = n, fill = continent)) +
+          geom_col() +
+          geom_text(aes(label = label), hjust = -0.1, size = 3.5) +
+          scale_fill_manual(values = colors, na.value = "#95a5a6") +
+          coord_flip() +
+          labs(
+            title = "Collection localities by continent",
+            x = NULL,
+            y = "Count"
+          ) +
+          theme_minimal() +
+          theme(
+            legend.position = "none",
+            plot.title = element_text(face = "bold", size = 14),
+            axis.text = element_text(size = 11),
+            panel.grid.major.y = element_blank(),
+            panel.grid.minor = element_blank()
+          ) +
+          scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+      }
     }
-    
-    tab <- df %>%
-      mutate(fossil_type = ifelse(is.na(fossil_type), "", fossil_type)) %>%
-      tidyr::separate_rows(fossil_type, sep = ",") %>%
-      mutate(
-        fossil_type = trimws(fossil_type),
-        fossil_type = dplyr::na_if(fossil_type, "")
-      ) %>%
-      mutate(fossil_type = ifelse(is.na(fossil_type), "Unknown", fossil_type)) %>%
-      count(fossil_type, name = "n", sort = TRUE)
-    
-    if (nrow(tab) == 0) { 
-      plot.new()
-      title("Fossil types: no data")
-      return() 
-    }
-    
-    barplot(tab$n, names.arg = tab$fossil_type, las = 1, cex.names = 0.8,
-            main = "Fossil types (collections)", ylab = "Count")
   })
   
   output$table_col <- renderDT({
