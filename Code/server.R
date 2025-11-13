@@ -207,17 +207,12 @@ server <- function(input, output, session) {
   
   # ----- Occurrences tab -----
   
-  # Cascading taxonomic filters (TOP-DOWN ONLY - stable approach)
-  # Superorder → Order → Family
+  # Cascading filters: Superorder → Order → Family
+  # Incompatible selections are prevented by filtering the dropdown choices
   
   # Forward cascade: When superorder changes, update available orders
   observeEvent(input$superorder_occ, {
-    if (length(input$superorder_occ) == 0) {
-      # No superorder selected - show all orders
-      updateSelectizeInput(session, "order_occ", 
-                           choices = order_choices,
-                           server = TRUE)
-    } else {
+    if (length(input$superorder_occ) > 0) {
       # Filter orders based on selected superorders
       available_orders <- c()
       for (so in input$superorder_occ) {
@@ -227,13 +222,15 @@ server <- function(input, output, session) {
       }
       available_orders <- sort(unique(available_orders[!is.na(available_orders)]))
       
-      # If no orders found, show all orders
-      if (length(available_orders) == 0) {
-        available_orders <- order_choices
+      if (length(available_orders) > 0) {
+        updateSelectizeInput(session, "order_occ", 
+                             choices = available_orders,
+                             server = TRUE)
       }
-      
+    } else {
+      # No superorder selected - show all orders
       updateSelectizeInput(session, "order_occ", 
-                           choices = available_orders,
+                           choices = order_choices,
                            server = TRUE)
     }
   }, ignoreNULL = FALSE)
@@ -270,6 +267,40 @@ server <- function(input, output, session) {
     
     updateSelectizeInput(session, "family_occ",
                          choices = available_families,
+                         selected = current_selection,
+                         server = TRUE)
+  }, ignoreNULL = FALSE)
+  
+  # When taxonomic filters change, update available statuses
+  observeEvent(list(input$superorder_occ, input$order_occ, input$family_occ), {
+    # Filter data based on current taxonomic selections
+    filtered_data <- occ
+    
+    if (length(input$superorder_occ) > 0) {
+      filtered_data <- filtered_data %>% filter(superorder %in% input$superorder_occ)
+    }
+    if (length(input$order_occ) > 0) {
+      filtered_data <- filtered_data %>% filter(order %in% input$order_occ)
+    }
+    if (length(input$family_occ) > 0) {
+      filtered_data <- filtered_data %>% filter(family %in% input$family_occ)
+    }
+    
+    # Get available statuses from filtered data
+    available_statuses <- us(filtered_data$status)
+    
+    # If no taxonomic filters selected, show all statuses
+    if (length(input$superorder_occ) == 0 && 
+        length(input$order_occ) == 0 && 
+        length(input$family_occ) == 0) {
+      available_statuses <- status_choices
+    }
+    
+    # Keep only currently selected statuses that are still valid
+    current_selection <- intersect(input$status_occ, available_statuses)
+    
+    updateSelectizeInput(session, "status_occ",
+                         choices = available_statuses,
                          selected = current_selection,
                          server = TRUE)
   }, ignoreNULL = FALSE)
@@ -371,7 +402,29 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$select_all_status_occ, {
-    updateSelectizeInput(session, "status_occ", selected = status_choices)
+    # Get current available statuses based on taxonomic selection
+    filtered_data <- occ
+    
+    if (length(input$superorder_occ) > 0) {
+      filtered_data <- filtered_data %>% filter(superorder %in% input$superorder_occ)
+    }
+    if (length(input$order_occ) > 0) {
+      filtered_data <- filtered_data %>% filter(order %in% input$order_occ)
+    }
+    if (length(input$family_occ) > 0) {
+      filtered_data <- filtered_data %>% filter(family %in% input$family_occ)
+    }
+    
+    available_statuses <- us(filtered_data$status)
+    
+    # If no taxonomic filters, use all statuses
+    if (length(input$superorder_occ) == 0 && 
+        length(input$order_occ) == 0 && 
+        length(input$family_occ) == 0) {
+      available_statuses <- status_choices
+    }
+    
+    updateSelectizeInput(session, "status_occ", selected = available_statuses)
   })
   observeEvent(input$clear_all_status_occ, {
     updateSelectizeInput(session, "status_occ", selected = character(0))

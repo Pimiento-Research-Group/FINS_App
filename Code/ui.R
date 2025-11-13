@@ -105,8 +105,8 @@ ui <- tagList(
                  h4("Taxa & Status"),
                  div(
                    style = "background-color: #e8f5e9; padding: 8px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 11px;",
-                   tags$strong("✓ Smart filtering:"),
-                   " Selecting Superorder filters Orders. Selecting Order filters Families. You'll be notified if combinations are incompatible."
+                   tags$strong("✓ Hierarchical filtering:"),
+                   " Selecting Superorder filters Orders. Selecting Order filters Families. Status filters based on selected taxonomy."
                  ),
                  
                  selectizeInput("superorder_occ", "Superorder:", choices = superorder_choices, multiple = TRUE),
