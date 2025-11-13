@@ -63,6 +63,7 @@ ui <- tagList(
     tabPanel("Occurrences",
              sidebarLayout(
                sidebarPanel(
+                 h3(style = "margin-top: 0; color: #2c3e50;", "Filtering options"),
                  div(
                    style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #2196F3;",
                    tags$strong("ℹ️ Filter behavior:"),
@@ -296,4 +297,3 @@ ui <- tagList(
     )
   )
 )
-
