@@ -444,7 +444,7 @@ server <- function(input, output, session) {
     out <- rv$occ
     out <- overlaps_time(out, input$epochs_occ, input$periods_occ)
     out <- apply_age_thresh_occ(out, input$age_thresh_occ)
-    out <- apply_geog(out, input$continent_occ, input$paleocean_occ)
+    out <- apply_geog(out, input$continent_occ, NULL, input$paleocean_occ)
     if (length(input$order_occ))      out <- out %>% filter(order %in% input$order_occ)
     if (length(input$superorder_occ)) out <- out %>% filter(superorder %in% input$superorder_occ)
     if (length(input$family_occ))     out <- out %>% filter(family %in% input$family_occ)
@@ -582,6 +582,13 @@ server <- function(input, output, session) {
     updateSelectizeInput(session, "continent_col", selected = character(0))
   })
   
+  observeEvent(input$select_all_country_col, {
+    updateSelectizeInput(session, "country_col", selected = country_choices_col)
+  })
+  observeEvent(input$clear_all_country_col, {
+    updateSelectizeInput(session, "country_col", selected = character(0))
+  })
+  
   observeEvent(input$select_all_paleocean_col, {
     updateSelectizeInput(session, "paleocean_col", selected = paleoocean_choices_col)
   })
@@ -607,7 +614,7 @@ server <- function(input, output, session) {
     }
     out <- overlaps_time(out, input$epochs_col, input$periods_col)
     out <- apply_age_thresh_col(out, input$age_thresh_col)
-    out <- apply_geog(out, input$continent_col, input$paleocean_col)
+    out <- apply_geog(out, input$continent_col, input$country_col, input$paleocean_col)
     out
   })
   
@@ -630,6 +637,19 @@ server <- function(input, output, session) {
     }
     out
   })
+  
+  output$source_counts_col <- renderTable({
+    tab <- col_filtered() %>%
+      count(collection_source, name = "n", sort = FALSE) %>%
+      tidyr::complete(collection_source = factor(source_levels, levels = source_levels), 
+                      fill = list(n = 0))
+    
+    total <- sum(tab$n, na.rm = TRUE)
+    tab <- dplyr::bind_rows(tab, tibble::tibble(collection_source = "Total", n = total))
+    
+    names(tab) <- c("Source", "Count")
+    tab
+  }, bordered = TRUE, striped = TRUE, digits = 0)
   
   output$map_col <- renderLeaflet({ 
     leaflet(options = leafletOptions(

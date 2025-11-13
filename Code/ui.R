@@ -63,7 +63,7 @@ ui <- tagList(
     tabPanel("Occurrences",
              sidebarLayout(
                sidebarPanel(
-                 h3(style = "margin-top: 0; color: #2c3e50;", "Filtering options"),
+                 h3(style = "margin-top: 0; color: #2c3e50;", "Filters"),
                  div(
                    style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #2196F3;",
                    tags$strong("ℹ️ Filter behavior:"),
@@ -212,6 +212,11 @@ ui <- tagList(
                      actionLink("select_all_continent_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
                      actionLink("clear_all_continent_col", "Clear All", style = "font-size: 11px;")),
                  
+                 selectizeInput("country_col", "Country:",  choices = country_choices_col,  multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_country_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_country_col", "Clear All", style = "font-size: 11px;")),
+                 
                  selectizeInput("paleocean_col", "Paleoocean:", choices = paleoocean_choices_col, multiple = TRUE),
                  div(style = "margin-top: -10px; margin-bottom: 10px;",
                      actionLink("select_all_paleocean_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
@@ -224,6 +229,11 @@ ui <- tagList(
                  downloadButton("download_col", "Download current Collections")
                ),
                mainPanel(
+                 wellPanel(
+                   style = "padding: 10px; margin-bottom: 10px;",
+                   h5(style = "margin-top: 0;", "Counts by source"),
+                   tableOutput("source_counts_col")
+                 ),
                  leafletOutput("map_col", height = 430),
                  plotOutput("plot_types_col", height = 260),
                  DTOutput("table_col")
@@ -297,3 +307,4 @@ ui <- tagList(
     )
   )
 )
+

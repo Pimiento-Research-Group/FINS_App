@@ -29,9 +29,10 @@ overlaps_time <- function(df, epochs_sel, periods_sel) {
   out
 }
 
-apply_geog <- function(df, continents, paleo) {
+apply_geog <- function(df, continents, countries, paleo) {
   out <- df
   if (length(continents)) out <- out %>% filter(continent %in% continents)
+  if (length(countries))  out <- out %>% filter(country %in% countries)
   if (length(paleo))      out <- out %>% filter(paleoocean %in% paleo)
   out
 }
@@ -648,6 +649,9 @@ continent_choices_occ  <- us(occ$continent)
 paleoocean_choices_occ <- us(occ$paleoocean)
 continent_choices_col  <- us(col$continent)
 paleoocean_choices_col <- us(col$paleoocean)
+
+country_choices_occ <- if ("country" %in% names(occ)) us(occ$country) else character(0)
+country_choices_col <- if ("country" %in% names(col)) us(col$country) else character(0)
 
 order_choices      <- us(occ$order)
 superorder_choices <- us(occ$superorder)
