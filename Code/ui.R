@@ -32,7 +32,7 @@ ui <- tagList(
     # ---- WELCOME / README ----
     tabPanel("Welcome",
              fluidPage(
-               h2("FINS - FossIl NeoSelachians - app"),
+               h2("FINS - FossIl NeoselachianS - app"),
                p("This app allows users to explore and add data to the FINS dataset, which consists of fossil occurrences, each linked to a collection and reference."),
                tags$hr(),
                fluidRow(
@@ -65,6 +65,7 @@ ui <- tagList(
                sidebarPanel(
                  div(
                    style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #2196F3;",
+                   tags$strong("ℹ️ Filter behavior:"),
                    tags$p(style = "margin: 5px 0 0 0; font-size: 12px;",
                           "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
                  ),
@@ -102,15 +103,21 @@ ui <- tagList(
                      actionLink("clear_all_paleocean_occ", "Clear All", style = "font-size: 11px;")),
                  
                  h4("Taxa & Status"),
-                 selectizeInput("order_occ",      "Order:",      choices = order_choices,      multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_order_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_order_occ", "Clear All", style = "font-size: 11px;")),
+                 div(
+                   style = "background-color: #e8f5e9; padding: 8px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 11px;",
+                   tags$strong("✓ Smart filtering:"),
+                   " Selecting Superorder filters Orders. Selecting Order filters Families. You'll be notified if combinations are incompatible."
+                 ),
                  
                  selectizeInput("superorder_occ", "Superorder:", choices = superorder_choices, multiple = TRUE),
                  div(style = "margin-top: -10px; margin-bottom: 10px;",
                      actionLink("select_all_superorder_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
                      actionLink("clear_all_superorder_occ", "Clear All", style = "font-size: 11px;")),
+                 
+                 selectizeInput("order_occ",      "Order:",      choices = order_choices,      multiple = TRUE),
+                 div(style = "margin-top: -10px; margin-bottom: 10px;",
+                     actionLink("select_all_order_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                     actionLink("clear_all_order_occ", "Clear All", style = "font-size: 11px;")),
                  
                  selectizeInput("family_occ",     "Family:",     choices = family_choices,     multiple = TRUE),
                  div(style = "margin-top: -10px; margin-bottom: 10px;",
@@ -289,3 +296,4 @@ ui <- tagList(
     )
   )
 )
+

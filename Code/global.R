@@ -655,5 +655,48 @@ family_choices     <- us(occ$family)
 rank_choices       <- us(occ$rank)
 status_choices     <- us(occ$status)
 
+# Create taxonomic hierarchy mapping for cascading filters
+# Superorder -> Orders mapping
+superorder_to_orders <- occ %>%
+  filter(!is.na(superorder), !is.na(order)) %>%
+  distinct(superorder, order) %>%
+  group_by(superorder) %>%
+  summarize(orders = list(sort(unique(order))), .groups = 'drop')
+
+# Convert to named list (more robust than deframe)
+if (nrow(superorder_to_orders) > 0) {
+  superorder_to_orders <- setNames(superorder_to_orders$orders, superorder_to_orders$superorder)
+} else {
+  superorder_to_orders <- list()
+}
+
+# Order -> Families mapping
+order_to_families <- occ %>%
+  filter(!is.na(order), !is.na(family)) %>%
+  distinct(order, family) %>%
+  group_by(order) %>%
+  summarize(families = list(sort(unique(family))), .groups = 'drop')
+
+# Convert to named list
+if (nrow(order_to_families) > 0) {
+  order_to_families <- setNames(order_to_families$families, order_to_families$order)
+} else {
+  order_to_families <- list()
+}
+
+# Superorder -> Families mapping (direct, for when order is not selected)
+superorder_to_families <- occ %>%
+  filter(!is.na(superorder), !is.na(family)) %>%
+  distinct(superorder, family) %>%
+  group_by(superorder) %>%
+  summarize(families = list(sort(unique(family))), .groups = 'drop')
+
+# Convert to named list
+if (nrow(superorder_to_families) > 0) {
+  superorder_to_families <- setNames(superorder_to_families$families, superorder_to_families$superorder)
+} else {
+  superorder_to_families <- list()
+}
+
 source_levels_occ      <- source_levels
 source_levels_col_all  <- source_levels

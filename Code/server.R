@@ -207,6 +207,73 @@ server <- function(input, output, session) {
   
   # ----- Occurrences tab -----
   
+  # Cascading taxonomic filters (TOP-DOWN ONLY - stable approach)
+  # Superorder → Order → Family
+  
+  # Forward cascade: When superorder changes, update available orders
+  observeEvent(input$superorder_occ, {
+    if (length(input$superorder_occ) == 0) {
+      # No superorder selected - show all orders
+      updateSelectizeInput(session, "order_occ", 
+                           choices = order_choices,
+                           server = TRUE)
+    } else {
+      # Filter orders based on selected superorders
+      available_orders <- c()
+      for (so in input$superorder_occ) {
+        if (!is.null(superorder_to_orders[[so]])) {
+          available_orders <- c(available_orders, superorder_to_orders[[so]])
+        }
+      }
+      available_orders <- sort(unique(available_orders[!is.na(available_orders)]))
+      
+      # If no orders found, show all orders
+      if (length(available_orders) == 0) {
+        available_orders <- order_choices
+      }
+      
+      updateSelectizeInput(session, "order_occ", 
+                           choices = available_orders,
+                           server = TRUE)
+    }
+  }, ignoreNULL = FALSE)
+  
+  # When order or superorder changes, update available families
+  observeEvent(list(input$order_occ, input$superorder_occ), {
+    available_families <- c()
+    
+    if (length(input$order_occ) > 0) {
+      # If orders are selected, use order -> family mapping
+      for (ord in input$order_occ) {
+        if (!is.null(order_to_families[[ord]])) {
+          available_families <- c(available_families, order_to_families[[ord]])
+        }
+      }
+    } else if (length(input$superorder_occ) > 0) {
+      # If only superorders are selected, use superorder -> family mapping
+      for (so in input$superorder_occ) {
+        if (!is.null(superorder_to_families[[so]])) {
+          available_families <- c(available_families, superorder_to_families[[so]])
+        }
+      }
+    }
+    
+    available_families <- sort(unique(available_families[!is.na(available_families)]))
+    
+    # If no families found, show all families
+    if (length(available_families) == 0) {
+      available_families <- family_choices
+    }
+    
+    # Keep only currently selected families that are still valid
+    current_selection <- intersect(input$family_occ, available_families)
+    
+    updateSelectizeInput(session, "family_occ",
+                         choices = available_families,
+                         selected = current_selection,
+                         server = TRUE)
+  }, ignoreNULL = FALSE)
+  
   # Select All / Clear All observers for Occurrences filters
   observeEvent(input$select_all_epochs_occ, {
     updateSelectizeInput(session, "epochs_occ", selected = epoch_choices_occ)
@@ -237,7 +304,23 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$select_all_order_occ, {
-    updateSelectizeInput(session, "order_occ", selected = order_choices)
+    # Get current available orders based on superorder selection
+    if (length(input$superorder_occ) > 0) {
+      available_orders <- c()
+      for (so in input$superorder_occ) {
+        if (!is.null(superorder_to_orders[[so]])) {
+          available_orders <- c(available_orders, superorder_to_orders[[so]])
+        }
+      }
+      available_orders <- sort(unique(available_orders[!is.na(available_orders)]))
+      if (length(available_orders) > 0) {
+        updateSelectizeInput(session, "order_occ", selected = available_orders)
+      } else {
+        updateSelectizeInput(session, "order_occ", selected = order_choices)
+      }
+    } else {
+      updateSelectizeInput(session, "order_occ", selected = order_choices)
+    }
   })
   observeEvent(input$clear_all_order_occ, {
     updateSelectizeInput(session, "order_occ", selected = character(0))
@@ -251,7 +334,30 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$select_all_family_occ, {
-    updateSelectizeInput(session, "family_occ", selected = family_choices)
+    # Get current available families based on order/superorder selection
+    available_families <- c()
+    
+    if (length(input$order_occ) > 0) {
+      for (ord in input$order_occ) {
+        if (!is.null(order_to_families[[ord]])) {
+          available_families <- c(available_families, order_to_families[[ord]])
+        }
+      }
+    } else if (length(input$superorder_occ) > 0) {
+      for (so in input$superorder_occ) {
+        if (!is.null(superorder_to_families[[so]])) {
+          available_families <- c(available_families, superorder_to_families[[so]])
+        }
+      }
+    }
+    
+    available_families <- sort(unique(available_families[!is.na(available_families)]))
+    
+    if (length(available_families) > 0) {
+      updateSelectizeInput(session, "family_occ", selected = available_families)
+    } else {
+      updateSelectizeInput(session, "family_occ", selected = family_choices)
+    }
   })
   observeEvent(input$clear_all_family_occ, {
     updateSelectizeInput(session, "family_occ", selected = character(0))
