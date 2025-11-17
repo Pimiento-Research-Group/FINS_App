@@ -204,7 +204,7 @@ ui <- tagList(
     tabPanel("Collections",
              sidebarLayout(
                sidebarPanel(
-                 checkboxInput("sync_col_with_occ", "Sync with current Occurrence filters", TRUE),
+                 checkboxInput("sync_col_with_occ", "Sync with current Occurrence filters", FALSE),
                  
                  div(
                    style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; margin-top: 10px; border-radius: 5px; border-left: 4px solid #2196F3;",
@@ -213,48 +213,70 @@ ui <- tagList(
                           "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
                  ),
                  
-                 h4("Time"),
-                 selectizeInput("epochs_col",  "Epochs",  choices = epoch_choices_col,  multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_epochs_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_epochs_col", "Clear All", style = "font-size: 11px;")),
-                 helpText("Uses columns: early_epoch & late_epoch"),
-                 
-                 selectizeInput("periods_col", "Periods", choices = period_choices_col, multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_periods_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_periods_col", "Clear All", style = "font-size: 11px;")),
-                 helpText("Uses columns: early_period & late_period"),
-                 
-                 selectizeInput(
-                   "age_thresh_col", "Max age-range (Myr):",
-                   choices = c("Any" = "any", "5", "15", "20"),
-                   selected = "any",
-                   options = list(create = TRUE, createOnBlur = TRUE, persist = TRUE, placeholder = "Any or type a number")
+                 # Collapsible panels
+                 bsCollapse(id = "collapse_col", open = c("panel_time_col", "panel_geo_col", "panel_source_col"),
+                            
+                            # TIME PANEL
+                            bsCollapsePanel("Time",
+                                            style = "default",
+                                            value = "panel_time_col",
+                                            
+                                            selectizeInput("epochs_col",  "Epochs",  choices = epoch_choices_col,  multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_epochs_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_epochs_col", "Clear All", style = "font-size: 11px;")),
+                                            helpText("Uses columns: early_epoch & late_epoch"),
+                                            
+                                            selectizeInput("periods_col", "Periods", choices = period_choices_col, multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_periods_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_periods_col", "Clear All", style = "font-size: 11px;")),
+                                            helpText("Uses columns: early_period & late_period"),
+                                            
+                                            selectizeInput(
+                                              "age_thresh_col", "Max age-range (Myr):",
+                                              choices = c("Any" = "any", "5", "15", "20"),
+                                              selected = "any",
+                                              options = list(create = TRUE, createOnBlur = TRUE, persist = TRUE, placeholder = "Any or type a number")
+                                            ),
+                                            helpText("Type any number (e.g., 10) or pick a preset. Use 'Any' to disable.")
+                            ),
+                            
+                            # GEOGRAPHY PANEL
+                            bsCollapsePanel("Geography",
+                                            style = "default",
+                                            value = "panel_geo_col",
+                                            
+                                            selectizeInput("continent_col", "Continent:",  choices = continent_choices_col,  multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_continent_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_continent_col", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("country_col", "Country:",  choices = country_choices_col,  multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_country_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_country_col", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("paleocean_col", "Paleoocean:", choices = paleoocean_choices_col, multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_paleocean_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_paleocean_col", "Clear All", style = "font-size: 11px;"))
+                            ),
+                            
+                            # SOURCE PANEL
+                            bsCollapsePanel("Source",
+                                            style = "default",
+                                            value = "panel_source_col",
+                                            
+                                            checkboxGroupInput("source_filter_col", "Collection source:",
+                                                               choices = source_levels_col_all, selected = source_levels_col_all, inline = TRUE)
+                            )
                  ),
-                 helpText("Type any number (e.g., 10) or pick a preset. Use 'Any' to disable."),
                  
-                 h4("Geography"),
-                 selectizeInput("continent_col", "Continent:",  choices = continent_choices_col,  multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_continent_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_continent_col", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("country_col", "Country:",  choices = country_choices_col,  multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_country_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_country_col", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("paleocean_col", "Paleoocean:", choices = paleoocean_choices_col, multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_paleocean_col", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_paleocean_col", "Clear All", style = "font-size: 11px;")),
-                 
-                 h4("Source"),
-                 checkboxGroupInput("source_filter_col", "Collection source:",
-                                    choices = source_levels_col_all, selected = source_levels_col_all, inline = TRUE),
-                 
-                 downloadButton("download_col", "Download current Collections")
+                 # Download button outside the collapse
+                 tags$div(style = "margin-top: 15px;",
+                          downloadButton("download_col", "Download current Collections", style = "width: 100%;")
+                 )
                ),
                mainPanel(
                  wellPanel(
