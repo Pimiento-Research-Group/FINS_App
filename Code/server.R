@@ -792,9 +792,23 @@ server <- function(input, output, session) {
   })
   
   refs_pool <- reactive({
-    if (!isTRUE(input$sync_refs_with_occ)) return(refs)
-    keys <- union(ref_keys_from_occ(), ref_keys_from_col())
+    mode <- input$sync_refs_mode %||% "both"  # Default to "both" (current behavior)
+    
+    # Get keys based on selected mode
+    keys <- switch(mode,
+                   "occ" = ref_keys_from_occ(),
+                   "col" = ref_keys_from_col(),
+                   "both" = union(ref_keys_from_occ(), ref_keys_from_col()),
+                   "none" = NULL
+    )
+    
+    # If "none" mode, return all references
+    if (mode == "none") return(refs)
+    
+    # If no keys found or reference_key column missing, return empty
     if (length(keys) == 0 || !"reference_key" %in% names(refs)) return(refs[0, ])
+    
+    # Filter references by keys
     refs %>% filter(reference_key %in% keys)
   })
   
@@ -804,7 +818,7 @@ server <- function(input, output, session) {
     us(ifelse(is.na(pool$language) | pool$language == "", "Unknown", pool$language))
   })
   
-  observeEvent(list(input$sync_refs_with_occ, occ_filtered(), col_filtered()), {
+  observeEvent(list(input$sync_refs_mode, occ_filtered(), col_filtered()), {
     ch <- refs_lang_choices()
     sel <- intersect(input$ref_langs %||% character(0), ch)
     if (length(sel) == 0) sel <- ch

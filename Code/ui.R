@@ -245,7 +245,15 @@ ui <- tagList(
     tabPanel("References",
              sidebarLayout(
                sidebarPanel(
-                 checkboxInput("sync_refs_with_occ", "Sync with current Occurrence filters", TRUE),
+                 radioButtons("sync_refs_mode", "Sync references with:",
+                              choices = c(
+                                "Occurrences filters only" = "occ",
+                                "Collections filters only" = "col",
+                                "Both filters (union)" = "both",
+                                "No filters (all references)" = "none"
+                              ),
+                              selected = "both"),
+                 helpText("Choose which filters determine which references are shown."),
                  selectizeInput("ref_langs", "Language:", choices = NULL, multiple = TRUE),
                  downloadButton("download_refs", "Download current References")
                ),
