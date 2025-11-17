@@ -835,8 +835,8 @@ server <- function(input, output, session) {
   })
   
   output$refs_summary <- renderTable({
-    data.frame(`# Papers` = nrow(refs_filtered()))
-  }, bordered = TRUE, striped = TRUE, digits = 0)
+    data.frame(`Papers` = nrow(refs_filtered()))
+  }, bordered = TRUE, striped = TRUE, digits = 0, colnames = FALSE)
   
   output$refs_table <- renderDT({
     datatable(refs_filtered(), options = list(pageLength = 12), rownames = FALSE)
