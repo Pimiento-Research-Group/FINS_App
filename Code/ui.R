@@ -72,7 +72,7 @@ ui <- tagList(
                  ),
                  
                  # Collapsible panels
-                 bsCollapse(id = "collapse_occ", open = c("panel_time_occ", "panel_geo_occ", "panel_taxa_occ", "panel_curation_occ"),
+                 bsCollapse(id = "collapse_occ", open = "panel_time_occ", multiple = TRUE,
                             
                             # TIME PANEL
                             bsCollapsePanel("Time", 
@@ -214,7 +214,7 @@ ui <- tagList(
                  ),
                  
                  # Collapsible panels
-                 bsCollapse(id = "collapse_col", open = c("panel_time_col", "panel_geo_col", "panel_source_col"),
+                 bsCollapse(id = "collapse_col", open = "panel_time_col", multiple = TRUE,
                             
                             # TIME PANEL
                             bsCollapsePanel("Time",
