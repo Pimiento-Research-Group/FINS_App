@@ -71,106 +71,134 @@ ui <- tagList(
                           "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
                  ),
                  
-                 h4("Time"),
-                 selectizeInput("epochs_occ",  "Epochs",  choices = epoch_choices_occ,  multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_epochs_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_epochs_occ", "Clear All", style = "font-size: 11px;")),
-                 helpText("Uses columns: early_epoch & late_epoch"),
-                 
-                 selectizeInput("periods_occ", "Periods", choices = period_choices_occ, multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_periods_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_periods_occ", "Clear All", style = "font-size: 11px;")),
-                 helpText("Uses columns: early_period & late_period"),
-                 
-                 selectizeInput(
-                   "age_thresh_occ", "Max age-range (Myr):",
-                   choices = c("Any" = "any", "5", "15", "20"),
-                   selected = "any",
-                   options = list(create = TRUE, createOnBlur = TRUE, persist = TRUE, placeholder = "Any or type a number")
+                 # Collapsible panels
+                 bsCollapse(id = "collapse_occ", open = c("panel_time_occ", "panel_geo_occ", "panel_taxa_occ", "panel_curation_occ"),
+                            
+                            # TIME PANEL
+                            bsCollapsePanel("Time", 
+                                            style = "default",
+                                            value = "panel_time_occ",
+                                            
+                                            selectizeInput("epochs_occ",  "Epochs",  choices = epoch_choices_occ,  multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_epochs_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_epochs_occ", "Clear All", style = "font-size: 11px;")),
+                                            helpText("Uses columns: early_epoch & late_epoch"),
+                                            
+                                            selectizeInput("periods_occ", "Periods", choices = period_choices_occ, multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_periods_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_periods_occ", "Clear All", style = "font-size: 11px;")),
+                                            helpText("Uses columns: early_period & late_period"),
+                                            
+                                            selectizeInput(
+                                              "age_thresh_occ", "Max age-range (Myr):",
+                                              choices = c("Any" = "any", "5", "15", "20"),
+                                              selected = "any",
+                                              options = list(create = TRUE, createOnBlur = TRUE, persist = TRUE, placeholder = "Any or type a number")
+                                            ),
+                                            helpText("Type any number (e.g., 7.5) or pick a preset. Use 'Any' to disable.")
+                            ),
+                            
+                            # GEOGRAPHY PANEL
+                            bsCollapsePanel("Geography",
+                                            style = "default",
+                                            value = "panel_geo_occ",
+                                            
+                                            selectizeInput("continent_occ", "Continent:",  choices = continent_choices_occ,  multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_continent_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_continent_occ", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("paleocean_occ", "Paleoocean:", choices = paleoocean_choices_occ, multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_paleocean_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_paleocean_occ", "Clear All", style = "font-size: 11px;"))
+                            ),
+                            
+                            # TAXA & STATUS PANEL
+                            bsCollapsePanel("Taxa & Status",
+                                            style = "default",
+                                            value = "panel_taxa_occ",
+                                            
+                                            div(
+                                              style = "background-color: #e8f5e9; padding: 8px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 11px;",
+                                              tags$strong("✓ Hierarchical filtering:"),
+                                              " Selecting Superorder filters Orders. Selecting Order filters Families. Status filters based on selected taxonomy."
+                                            ),
+                                            
+                                            selectizeInput("superorder_occ", "Superorder:", choices = superorder_choices, multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_superorder_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_superorder_occ", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("order_occ",      "Order:",      choices = order_choices,      multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_order_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_order_occ", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("family_occ",     "Family:",     choices = family_choices,     multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_family_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_family_occ", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("rank_occ",       "Rank:",       choices = rank_choices,       multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_rank_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_rank_occ", "Clear All", style = "font-size: 11px;")),
+                                            
+                                            selectizeInput("status_occ",     "Status:",     choices = status_choices,     multiple = TRUE),
+                                            div(style = "margin-top: -10px; margin-bottom: 10px;",
+                                                actionLink("select_all_status_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
+                                                actionLink("clear_all_status_occ", "Clear All", style = "font-size: 11px;"))
+                            ),
+                            
+                            # CURATION & SOURCE PANEL
+                            bsCollapsePanel("Curation & Source",
+                                            style = "default",
+                                            value = "panel_curation_occ",
+                                            
+                                            radioButtons("name_mode_occ", "Name display:",
+                                                         choices = c("Curated (accepted_name)"="cur","As provided (identified_name)"="raw"),
+                                                         selected = "cur"),
+                                            checkboxGroupInput("val_filters_occ", "Valid only:",
+                                                               choices = c("Age"="age","Taxonomy"="tax","Evidence"="ev"), inline = TRUE),
+                                            checkboxGroupInput("source_filter_occ", "Sources:",
+                                                               choices = source_levels_occ, selected = source_levels_occ, inline = TRUE),
+                                            checkboxGroupInput(
+                                              "uncertain_mode_occ", "Uncertain nomenclature:",
+                                              choices = c("Flag", "Exclude"),
+                                              selected = character(0), inline = TRUE
+                                            ),
+                                            helpText('Uncertain terms detected in "identified_name": aff., cf., ?, "'),
+                                            
+                                            checkboxInput("collapse_dups_occ", "Collapse duplicate taxa (by name)", FALSE)
+                            )
                  ),
-                 helpText("Type any number (e.g., 7.5) or pick a preset. Use 'Any' to disable."),
                  
-                 h4("Geography"),
-                 selectizeInput("continent_occ", "Continent:",  choices = continent_choices_occ,  multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_continent_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_continent_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("paleocean_occ", "Paleoocean:", choices = paleoocean_choices_occ, multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_paleocean_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_paleocean_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 h4("Taxa & Status"),
-                 div(
-                   style = "background-color: #e8f5e9; padding: 8px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 11px;",
-                   tags$strong("✓ Hierarchical filtering:"),
-                   " Selecting Superorder filters Orders. Selecting Order filters Families. Status filters based on selected taxonomy."
-                 ),
-                 
-                 selectizeInput("superorder_occ", "Superorder:", choices = superorder_choices, multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_superorder_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_superorder_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("order_occ",      "Order:",      choices = order_choices,      multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_order_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_order_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("family_occ",     "Family:",     choices = family_choices,     multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_family_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_family_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("rank_occ",       "Rank:",       choices = rank_choices,       multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_rank_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_rank_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 selectizeInput("status_occ",     "Status:",     choices = status_choices,     multiple = TRUE),
-                 div(style = "margin-top: -10px; margin-bottom: 10px;",
-                     actionLink("select_all_status_occ", "Select All", style = "font-size: 11px; margin-right: 10px;"),
-                     actionLink("clear_all_status_occ", "Clear All", style = "font-size: 11px;")),
-                 
-                 h4("Curation & Source"),
-                 radioButtons("name_mode_occ", "Name display:",
-                              choices = c("Curated (accepted_name)"="cur","As provided (identified_name)"="raw"),
-                              selected = "cur"),
-                 checkboxGroupInput("val_filters_occ", "Valid only:",
-                                    choices = c("Age"="age","Taxonomy"="tax","Evidence"="ev"), inline = TRUE),
-                 checkboxGroupInput("source_filter_occ", "Sources:",
-                                    choices = source_levels_occ, selected = source_levels_occ, inline = TRUE),
-                 checkboxGroupInput(
-                   "uncertain_mode_occ", "Uncertain nomenclature:",
-                   choices = c("Flag", "Exclude"),
-                   selected = character(0), inline = TRUE
-                 ),
-                 helpText('Uncertain terms detected in "identified_name": aff., cf., ?, "'),
-                 
-                 checkboxInput("collapse_dups_occ", "Collapse duplicate taxa (by name)", FALSE),
-                 downloadButton("download_occ", "Download current Occurrences")
+                 # Download button outside the collapse
+                 tags$div(style = "margin-top: 15px;",
+                          downloadButton("download_occ", "Download current Occurrences", style = "width: 100%;")
+                 )
                ),
                mainPanel(
                  fluidRow(
                    column(6, wellPanel(
                      style = "padding: 10px; margin-bottom: 10px;",
-                     h5(style = "margin-top: 0;", "Counts by source"), 
+                     h5(style = "margin-top: 0;", "Counts by source"),
                      tableOutput("source_counts_occ")
                    )),
                    column(6, wellPanel(
                      style = "padding: 10px; margin-bottom: 10px;",
-                     h5(style = "margin-top: 0;", "Curation snapshot"), 
+                     h5(style = "margin-top: 0;", "Curation snapshot"),
                      htmlOutput("curation_snapshot_occ")
                    ))
                  ),
                  leafletOutput("map_occ", height = 550),
                  DTOutput("table_occ")
-               )
-             )
-    ),
+               )  # End of mainPanel
+             )  # End of sidebarLayout
+    ),  # End of tabPanel("Occurrences")
     
     # ---- COLLECTIONS ----
     tabPanel("Collections",
