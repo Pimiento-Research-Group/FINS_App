@@ -3,7 +3,7 @@
 server <- function(input, output, session) {
   
   # Make logo available to the app
-  addResourcePath("logo.png", here::here("branding", "logo.png"))
+  addResourcePath("branding", here::here("branding"))
   
   # Use rv$occ / rv$col / rv$refs everywhere instead of raw occ/col/refs
   rv <- reactiveValues(occ = occ, col = col, refs = refs)

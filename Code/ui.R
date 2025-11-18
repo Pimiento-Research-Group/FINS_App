@@ -29,26 +29,14 @@ ui <- tagList(
         color: #ffffff !important;
       }
       
-      /* Light-blue 'Add data' tab - keep distinctive but harmonized */
-      .navbar-nav > li > a[data-value='Add data'] {
-        background-color: #b8d4c8 !important;  /* Light sage */
-        color: #4a6b6b !important;              /* Dark teal text */
-        border-radius: 6px;
-        margin: 0 6px;
-        font-weight: 600;
-      }
-      
-      .navbar-nav > li > a[data-value='Add data']:hover {
-        background-color: #a3c4b8 !important;
-        color: #3d5a5a !important;
-      }
-      
-      /* Active 'Add data' tab */
-      .navbar-nav > li.active > a[data-value='Add data'],
-      .navbar-nav > li.active > a[data-value='Add data']:focus,
-      .navbar-nav > li.active > a[data-value='Add data']:hover {
+      /* Active 'Add data' tab - looks like other active tabs */
+      .navbar-default .navbar-nav > li.active > a[data-value='Add data'],
+      .navbar-default .navbar-nav > li.active > a[data-value='Add data']:hover,
+      .navbar-default .navbar-nav > li.active > a[data-value='Add data']:focus {
         background-color: #8fb3a3 !important;
         color: #ffffff !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
       }
       
       /* Sidebar panels */
@@ -128,7 +116,7 @@ ui <- tagList(
   navbarPage(
     title = div(
       style = "display: flex; align-items: center; height: 100%;",
-      img(src = "logo.png", height = "40px", style = "margin-right: 10px;"),
+      img(src = "branding/logo.png", height = "40px", style = "margin-right: 10px;"),
       span("FINS app")
     ),
     id = "main_tabs",
@@ -312,7 +300,7 @@ ui <- tagList(
                  checkboxInput("sync_col_with_occ", "Sync with current Occurrence filters", FALSE),
                  
                  div(
-                   style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; margin-top: 10px; border-radius: 5px; border-left: 4px solid #2196F3;",
+                   style = "background-color: #d4e8df; padding: 10px; margin-bottom: 15px; margin-top: 10px; border-radius: 5px; border-left: 4px solid #8fb3a3;",
                    tags$strong("ℹ️ Filter behavior:"),
                    tags$p(style = "margin: 5px 0 0 0; font-size: 12px;",
                           "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
