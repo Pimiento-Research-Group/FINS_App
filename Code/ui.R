@@ -26,8 +26,13 @@ ui <- tagList(
   ),
   
   navbarPage(
-    "FINS app",
+    title = div(
+      style = "display: flex; align-items: center; height: 100%;",
+      img(src = "logo.png", height = "40px", style = "margin-right: 10px;"),
+      span("FINS app")
+    ),
     id = "main_tabs",
+    windowTitle = "FINS app",
     
     # ---- WELCOME / README ----
     tabPanel("Home",
