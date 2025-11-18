@@ -3,24 +3,124 @@
 ui <- tagList(
   tags$head(
     tags$style(HTML("
-      /* Light-blue 'Add data' tab */
-      .navbar-nav > li > a[data-value='Add data']{
-        background-color:#e6f4ff !important;  /* light blue */
-        color:#0b5cab !important;              /* deep blue text */
-        border-radius:6px;
+      /* Main navbar styling */
+      .navbar-default {
+        background-color: #4a6b6b !important;  /* Dark teal from logo */
+        border-color: #3d5a5a !important;
+      }
+      
+      .navbar-default .navbar-brand,
+      .navbar-default .navbar-nav > li > a {
+        color: #ffffff !important;
+        font-weight: 500;
+      }
+      
+      .navbar-default .navbar-nav > li > a:hover,
+      .navbar-default .navbar-nav > li > a:focus {
+        background-color: #5a7d7d !important;
+        color: #ffffff !important;
+      }
+      
+      /* Active tab */
+      .navbar-default .navbar-nav > .active > a,
+      .navbar-default .navbar-nav > .active > a:hover,
+      .navbar-default .navbar-nav > .active > a:focus {
+        background-color: #8fb3a3 !important;  /* Medium sage */
+        color: #ffffff !important;
+      }
+      
+      /* Light-blue 'Add data' tab - keep distinctive but harmonized */
+      .navbar-nav > li > a[data-value='Add data'] {
+        background-color: #b8d4c8 !important;  /* Light sage */
+        color: #4a6b6b !important;              /* Dark teal text */
+        border-radius: 6px;
         margin: 0 6px;
         font-weight: 600;
       }
-      .navbar-nav > li > a[data-value='Add data']:hover{
-        background-color:#d7ecff !important;
-        color:#0b5cab !important;
+      
+      .navbar-nav > li > a[data-value='Add data']:hover {
+        background-color: #a3c4b8 !important;
+        color: #3d5a5a !important;
       }
-      /* Active state (when the tab is selected) */
+      
+      /* Active 'Add data' tab */
       .navbar-nav > li.active > a[data-value='Add data'],
       .navbar-nav > li.active > a[data-value='Add data']:focus,
-      .navbar-nav > li.active > a[data-value='Add data']:hover{
-        background-color:#cfe8ff !important;
-        color:#073b7a !important;
+      .navbar-nav > li.active > a[data-value='Add data']:hover {
+        background-color: #8fb3a3 !important;
+        color: #ffffff !important;
+      }
+      
+      /* Sidebar panels */
+      .well {
+        background-color: #f5f9f7 !important;
+        border: 1px solid #b8d4c8 !important;
+      }
+      
+      /* Headers */
+      h2, h3, h4, h5 {
+        color: #4a6b6b !important;
+      }
+      
+      /* Primary buttons */
+      .btn-primary {
+        background-color: #4a6b6b !important;
+        border-color: #3d5a5a !important;
+      }
+      
+      .btn-primary:hover {
+        background-color: #5a7d7d !important;
+        border-color: #4a6b6b !important;
+      }
+      
+      /* Info boxes - update the existing light blue ones */
+      div[style*='background-color: #e3f2fd'] {
+        background-color: #d4e8df !important;
+        border-left: 4px solid #8fb3a3 !important;
+      }
+      
+      /* Success/highlight boxes */
+      div[style*='background-color: #e8f5e9'] {
+        background-color: #d4e8df !important;
+        border-left: 3px solid #8fb3a3 !important;
+      }
+      
+      /* Action links */
+      a {
+        color: #4a6b6b !important;
+      }
+      
+      a:hover {
+        color: #5a7d7d !important;
+      }
+      
+      /* Download buttons */
+      .btn-default {
+        background-color: #8fb3a3 !important;
+        color: #ffffff !important;
+        border-color: #7a9d8d !important;
+      }
+      
+      .btn-default:hover {
+        background-color: #7a9d8d !important;
+        border-color: #6a8d7d !important;
+      }
+      
+      /* Collapsible panels */
+      .panel-default > .panel-heading {
+        background-color: #b8d4c8 !important;
+        color: #4a6b6b !important;
+        border-color: #a3c4b8 !important;
+      }
+      
+      /* Tables */
+      .table-striped > tbody > tr:nth-of-type(odd) {
+        background-color: #f5f9f7 !important;
+      }
+      
+      /* Leaflet map controls */
+      .leaflet-control-layers {
+        background-color: #f5f9f7 !important;
       }
     "))
   ),
@@ -70,7 +170,7 @@ ui <- tagList(
                sidebarPanel(
                  h3(style = "margin-top: 0; color: #2c3e50;", "Filters"),
                  div(
-                   style = "background-color: #e3f2fd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #2196F3;",
+                   style = "background-color: #d4e8df; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #8fb3a3;",
                    tags$strong("ℹ️ Filter behavior:"),
                    tags$p(style = "margin: 5px 0 0 0; font-size: 12px;",
                           "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
@@ -127,7 +227,7 @@ ui <- tagList(
                                             value = "panel_taxa_occ",
                                             
                                             div(
-                                              style = "background-color: #e8f5e9; padding: 8px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50; font-size: 11px;",
+                                              style = "background-color: #d4e8df; padding: 8px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #8fb3a3; font-size: 11px;",
                                               tags$strong("✓ Hierarchical filtering:"),
                                               " Selecting Superorder filters Orders. Selecting Order filters Families. Status filters based on selected taxonomy."
                                             ),
