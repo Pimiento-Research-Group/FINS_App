@@ -630,15 +630,15 @@ occ <- occ %>% mutate(
 )
 
 # Robust coll_id for occurrences
-if ("collection_number" %in% names(occ) && "collection_number" %in% names(occ)) {
-  occ <- occ %>% mutate(coll_id = dplyr::coalesce(as.character(collection_number),
-                                                  as.character(collection_number)))
-} else if ("collection_number" %in% names(occ)) {
+if ("collection_number" %in% names(occ)) {
   occ <- occ %>% mutate(coll_id = as.character(collection_number))
-} else if ("collection_number" %in% names(occ)) {
-  occ <- occ %>% mutate(coll_id = as.character(collection_number))
+} else if ("collection_no" %in% names(occ)) {
+  occ <- occ %>% mutate(coll_id = as.character(collection_no))
 } else {
-  occ <- occ %>% mutate(coll_id = NA_character_)
+  # If neither exists, check if coll_id already exists, otherwise set to NA
+  if (!"coll_id" %in% names(occ)) {
+    occ <- occ %>% mutate(coll_id = NA_character_)
+  }
 }
 
 # ---------- Collections prep ----------

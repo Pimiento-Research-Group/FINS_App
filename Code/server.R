@@ -602,8 +602,11 @@ server <- function(input, output, session) {
     df %>% filter(!is.na(age_range) & age_range <= thr)
   }
   
-  occ_coll_ids_filtered <- reactive({ 
-    unique(occ_filtered()$coll_id %||% NA_character_) 
+  occ_coll_ids_filtered <- reactive({     
+    ids <- occ_filtered()$coll_id %||% character(0)
+    # Remove NA values - we only want valid collection IDs
+    ids <- ids[!is.na(ids) & ids != ""]
+    unique(ids)
   })
   
   col_pool <- reactive({
