@@ -373,10 +373,11 @@ ui <- tagList(
                ),
                mainPanel(
                  wellPanel(
-                   style = "padding: 10px; margin-bottom: 10px;",
-                   h5(style = "margin-top: 0;", "Counts by source"),
+                   style = "padding: 10px; margin-bottom: 15px; width: fit-content; min-width: 300px;",
+                   h5(style = "margin-top: 0;", "Collections by source"),
                    tableOutput("source_counts_col")
                  ),
+                 
                  leafletOutput("map_col", height = 430),
                  plotOutput("plot_types_col", height = 260),
                  DTOutput("table_col")
