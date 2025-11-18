@@ -23,6 +23,27 @@ us <- function(x) sort(unique(na.omit(x)))
 drop_dot_cols <- function(df) df %>% select(-matches("^\\.\\.\\d+$"), everything())
 has_col <- function(df, nm) nm %in% names(df)
 
+# Ensure dataframe has specified columns (add as NA if missing)
+ensure_cols <- function(df, col_names) {
+  for (nm in col_names) {
+    if (!nm %in% names(df)) {
+      df[[nm]] <- NA_character_
+    }
+  }
+  df
+}
+
+# Coalesce across multiple column names (returns first non-NA column)
+coalesce_col <- function(df, col_names) {
+  for (nm in col_names) {
+    if (nm %in% names(df)) {
+      vals <- df[[nm]]
+      if (any(!is.na(vals))) return(vals)
+    }
+  }
+  rep(NA, nrow(df))
+}
+
 # Epoch/Period filters: keep row if EITHER early_* OR late_* matches a selected value
 overlaps_time <- function(df, epochs_sel, periods_sel) {
   out <- df
@@ -338,6 +359,26 @@ classify_interval_type <- function(label) {
 
 # ---- Paleocoordinate reconstruction helpers ----
 .recon_models <- c("MATTHEWS2016_mantle_ref", "PALEOMAP", "SETON2012", "MULLER2019")
+
+# Create a cache key from the uploaded Collections file
+.make_paleo_key <- function(df) {
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  
+  # Create a hash of the relevant columns to use as cache key
+  # Use collection IDs, coordinates, and ages
+  key_cols <- c("collection_number", "collection_no", "lng", "lat", 
+                "longitude", "latitude", "max_ma", "min_ma")
+  
+  # Get columns that exist
+  existing_cols <- intersect(tolower(names(df)), key_cols)
+  
+  if (length(existing_cols) == 0) return(NULL)
+  
+  # Create a string representation and hash it
+  key_data <- df[, existing_cols, drop = FALSE]
+  key_string <- paste(capture.output(str(key_data)), collapse = "")
+  digest::digest(key_string, algo = "md5")
+}
 
 .reconstruct_one <- function(lon, lat, age_ma, models = .recon_models) {
   # Validate inputs first
