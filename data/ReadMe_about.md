@@ -20,17 +20,18 @@ The Fossil Neoselachian (FINS) dataset is a comprehensive, systematically curate
 FINS consists of fossil occurrences, each linked to a collection (location where fossils were reported from) and a source (citation of the publications from which data was obtained). 
 All data was subjected to a meticulous curation process, which is described through taxonomic and age validation variables.
 
-**`Occurrences`**  
+**`Occurrences`**<br>
 Occurrence data mostly consists of taxonomic variables (e.g., classification, names and ranks), each linked to collections and references
 
-**`Collections`**  
-Collection data provide geographic (e.g., country, ocean and paleo-coordinates) and geological (e.g., formation and age) variables and its linked to occurrences and references
+**`Collections`**<br>
+Collection data provide geographic (e.g., country, ocean and paleo-coordinates) and geological (e.g., formation and age) variables and are linked to occurrences and references
 
-**`References`**  
+**`References`**<br>
 Reference data consists of the full citation of the publications from which data was obtained.
 
-**`Add data`**
+**`Add data`**<br>
+Through this tab you can append additional data downloaded from PBDB to the existing collections and occurrences. Please refer to the "Guide to adding new data" for detailed instructions. 
 
-#### What FINS' spatial and temporal span?
+#### What is the spatial and temporal span of FINS?
 
 FINS spans the entire globe, with fossil occurrences recovered from all continents from the Cretaceous to the Quaternary (145 – 0 Ma), with temporal resolution generally corresponding to geological stages or epochs.
