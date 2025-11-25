@@ -855,6 +855,81 @@ server <- function(input, output, session) {
         scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
     }
   })
+  
+  output$rank_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    # Handle missing or NA ranks, and group rare ranks into "Other"
+    df_with_rank <- df %>%
+      mutate(
+        rank_grouped = case_when(
+          is.na(rank) | rank == "" ~ "Unknown",
+          tolower(rank) == "species" ~ "Species",
+          tolower(rank) == "genus" ~ "Genus",
+          tolower(rank) == "family" ~ "Family",
+          tolower(rank) == "order" ~ "Order",
+          TRUE ~ "Other"
+        )
+      )
+    
+    if (nrow(df_with_rank) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, 
+                 label = "No occurrence data", 
+                 size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      # Count by rank and source
+      plot_data <- df_with_rank %>%
+        count(rank_grouped, source)
+      
+      # Calculate totals per rank for ordering and percentages
+      rank_totals <- plot_data %>%
+        group_by(rank_grouped) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(
+          percentage = round(100 * total / sum(total), 1),
+          label = paste0(total, " (", percentage, "%)")
+        ) %>%
+        arrange(total)
+      
+      # Create factor ordered by count
+      plot_data <- plot_data %>%
+        mutate(rank_factor = factor(rank_grouped, 
+                                    levels = rank_totals$rank_grouped))
+      
+      # Color palette for sources
+      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+      
+      ggplot(plot_data, aes(x = rank_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(
+          data = rank_totals %>% 
+            mutate(rank_factor = factor(rank_grouped, levels = rank_totals$rank_grouped)),
+          aes(x = rank_factor, y = total, label = label, fill = NULL),
+          hjust = -0.1, size = 3.5, fontface = "bold"
+        ) +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(
+          title = "Occurrences by taxonomic rank",
+          subtitle = "Distribution by identification precision (species, genus, family, order, and other)",
+          x = NULL,
+          y = "Number of occurrences"
+        ) +
+        theme_minimal() +
+        theme(
+          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+          axis.text = element_text(size = 11),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold"),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor = element_blank()
+        ) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+    }
+  })
   # ----- Collections tab -----
   
   # Select All / Clear All observers for Collections filters

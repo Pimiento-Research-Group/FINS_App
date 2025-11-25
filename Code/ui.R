@@ -316,7 +316,13 @@ ui <- tagList(
                             
                             # Order plot
                             h4("Taxonomic distribution"),
-                            plotOutput("order_plot_occ", height = 450)
+                            plotOutput("order_plot_occ", height = 450),
+                            
+                            tags$hr(),
+                            
+                            # Rank plot
+                            h4("Taxonomic rank distribution"),
+                            plotOutput("rank_plot_occ", height = 300)
                    )
                  )
                )  # End of mainPanel
