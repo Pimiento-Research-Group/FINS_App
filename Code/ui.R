@@ -295,7 +295,6 @@ ui <- tagList(
                    
                    tabPanel("Data visualisation",
                             h3("Data Visualisation"),
-                            p("Charts and plots will be added here."),
                             # Placeholder for future visualizations
                             plotOutput("placeholder_plot_occ", height = 400)
                    )

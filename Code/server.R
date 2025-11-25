@@ -561,6 +561,99 @@ server <- function(input, output, session) {
     content  = function(file) write.csv(occ_filtered(), file, row.names = FALSE)
   )
   
+  output$placeholder_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    # Define epoch boundaries (Ma)
+    epoch_boundaries <- data.frame(
+      epoch = c("Early Cretaceous", "Late Cretaceous", "Paleocene", "Eocene", 
+                "Oligocene", "Miocene", "Pliocene", "Pleistocene", "Holocene"),
+      min_age = c(145, 100.5, 66, 56, 33.9, 23.03, 5.333, 2.58, 0.0117),
+      max_age = c(100.5, 66, 56, 33.9, 23.03, 5.333, 2.58, 0.0117, 0),
+      stringsAsFactors = FALSE
+    )
+    
+    # Create classification function that captures epoch_boundaries
+    classify_epoch <- function(min_ma, max_ma) {
+      if (is.na(min_ma) || is.na(max_ma)) return(NA_character_)
+      
+      # Find overlapping epochs
+      overlaps <- epoch_boundaries[
+        max_ma >= epoch_boundaries$min_age & min_ma <= epoch_boundaries$max_age,
+      ]
+      
+      if (nrow(overlaps) == 0) return(NA_character_)
+      if (nrow(overlaps) == 1) return(overlaps$epoch[1])
+      
+      # Multiple overlaps: use midpoint
+      midpoint <- (min_ma + max_ma) / 2
+      idx <- which(midpoint >= overlaps$min_age & midpoint <= overlaps$max_age)
+      if (length(idx) > 0) overlaps$epoch[idx[1]] else NA_character_
+    }
+    
+    # Apply classification (vectorized with mapply)
+    df_classified <- df %>%
+      filter(!is.na(min_ma), !is.na(max_ma)) %>%
+      mutate(
+        epoch_classified = mapply(classify_epoch, min_ma, max_ma, SIMPLIFY = TRUE, USE.NAMES = FALSE)
+      ) %>%
+      filter(!is.na(epoch_classified))
+    
+    if (nrow(df_classified) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, 
+                 label = "No data with valid age ranges", 
+                 size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      # Count by epoch and source
+      plot_data <- df_classified %>%
+        count(epoch_classified, source)
+      
+      # Calculate totals per epoch for ordering
+      epoch_totals <- plot_data %>%
+        group_by(epoch_classified) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        arrange(total)
+      
+      # Create factor ordered by count
+      plot_data <- plot_data %>%
+        mutate(epoch_factor = factor(epoch_classified, 
+                                     levels = epoch_totals$epoch_classified))
+      
+      # Color palette for sources
+      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+      
+      ggplot(plot_data, aes(x = epoch_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(
+          data = epoch_totals %>% 
+            mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified)),
+          aes(x = epoch_factor, y = total, label = total, fill = NULL),
+          hjust = -0.2, size = 3.5, fontface = "bold"
+        ) +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(
+          title = "Occurrences by Epoch",
+          subtitle = "Based on age range (min_ma - max_ma) overlap with epoch boundaries",
+          x = NULL,
+          y = "Number of occurrences"
+        ) +
+        theme_minimal() +
+        theme(
+          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+          axis.text = element_text(size = 11),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold"),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor = element_blank()
+        ) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+    }
+  })
+  
   # ----- Collections tab -----
   
   # Select All / Clear All observers for Collections filters
