@@ -275,20 +275,31 @@ ui <- tagList(
                  )
                ),
                mainPanel(
-                 fluidRow(
-                   column(6, wellPanel(
-                     style = "padding: 10px; margin-bottom: 10px;",
-                     h5(style = "margin-top: 0;", "Counts by source"),
-                     tableOutput("source_counts_occ")
-                   )),
-                   column(6, wellPanel(
-                     style = "padding: 10px; margin-bottom: 10px;",
-                     h5(style = "margin-top: 0;", "Curation snapshot"),
-                     htmlOutput("curation_snapshot_occ")
-                   ))
-                 ),
-                 leafletOutput("map_occ", height = 550),
-                 DTOutput("table_occ")
+                 tabsetPanel(
+                   tabPanel("Dynamic map",
+                            fluidRow(
+                              column(6, wellPanel(
+                                style = "padding: 10px; margin-bottom: 10px;",
+                                h5(style = "margin-top: 0;", "Counts by source"),
+                                tableOutput("source_counts_occ")
+                              )),
+                              column(6, wellPanel(
+                                style = "padding: 10px; margin-bottom: 10px;",
+                                h5(style = "margin-top: 0;", "Curation snapshot"),
+                                htmlOutput("curation_snapshot_occ")
+                              ))
+                            ),
+                            leafletOutput("map_occ", height = 550),
+                            DTOutput("table_occ")
+                   ),
+                   
+                   tabPanel("Data visualisation",
+                            h3("Data Visualisation"),
+                            p("Charts and plots will be added here."),
+                            # Placeholder for future visualizations
+                            plotOutput("placeholder_plot_occ", height = 400)
+                   )
+                 )
                )  # End of mainPanel
              )  # End of sidebarLayout
     ),  # End of tabPanel("Occurrences")
