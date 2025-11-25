@@ -176,7 +176,7 @@ server <- function(input, output, session) {
     } else {
       # Default About content if file doesn't exist
       tags$div(
-        p(strong("FINS"), " (FossIl NeoselachianS) is a comprehensive global database of fossil sharks, rays, and skates."),
+        p(strong("FINS"), " (FossIl NeoSelachians) is a comprehensive global database of fossil sharks, rays, and skates."),
         h5("Database Contents"),
         tags$ul(
           tags$li("Fossil occurrence records with detailed taxonomic information"),

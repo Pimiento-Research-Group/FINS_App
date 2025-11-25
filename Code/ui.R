@@ -125,7 +125,7 @@ ui <- tagList(
     # ---- WELCOME / README ----
     tabPanel("Home",
              fluidPage(
-               h2("FINS - FossIl NeoselachianS - app"),
+               h2("FINS - FossIl NeoSelachians - app"),
                p("This app allows users to explore and add data to the FINS dataset, which consists of fossil occurrences, each linked to a collection and reference."),
                tags$hr(),
                fluidRow(
