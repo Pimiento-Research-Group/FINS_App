@@ -295,8 +295,16 @@ ui <- tagList(
                    
                    tabPanel("Data visualisation",
                             h3("Data Visualisation"),
-                            # Placeholder for future visualizations
-                            plotOutput("placeholder_plot_occ", height = 400)
+                            
+                            # Epoch plot
+                            h4("Temporal Distribution"),
+                            plotOutput("placeholder_plot_occ", height = 400),
+                            
+                            tags$hr(),
+                            
+                            # Continent plot
+                            h4("Geographic Distribution"),
+                            plotOutput("continent_plot_occ", height = 350)
                    )
                  )
                )  # End of mainPanel

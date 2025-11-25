@@ -610,10 +610,14 @@ server <- function(input, output, session) {
       plot_data <- df_classified %>%
         count(epoch_classified, source)
       
-      # Calculate totals per epoch for ordering
+      # Calculate totals per epoch for ordering and percentages
       epoch_totals <- plot_data %>%
         group_by(epoch_classified) %>%
         summarise(total = sum(n), .groups = "drop") %>%
+        mutate(
+          percentage = round(100 * total / sum(total), 1),
+          label = paste0(total, " (", percentage, "%)")
+        ) %>%
         arrange(total)
       
       # Create factor ordered by count
@@ -629,13 +633,13 @@ server <- function(input, output, session) {
         geom_text(
           data = epoch_totals %>% 
             mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified)),
-          aes(x = epoch_factor, y = total, label = total, fill = NULL),
+          aes(x = epoch_factor, y = total, label = label, fill = NULL),
           hjust = -0.2, size = 3.5, fontface = "bold"
         ) +
         scale_fill_manual(values = source_colors, name = "Source") +
         coord_flip() +
         labs(
-          title = "Occurrences by Epoch",
+          title = "Occurrences by epoch",
           subtitle = "Based on age range (min_ma - max_ma) overlap with epoch boundaries",
           x = NULL,
           y = "Number of occurrences"
@@ -651,6 +655,72 @@ server <- function(input, output, session) {
           panel.grid.minor = element_blank()
         ) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+    }
+  })
+  
+  output$continent_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    # Handle missing or NA continents
+    df_with_continent <- df %>%
+      mutate(continent = ifelse(is.na(continent) | continent == "", "Unknown", continent))
+    
+    if (nrow(df_with_continent) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, 
+                 label = "No occurrence data", 
+                 size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      # Count by continent and source
+      plot_data <- df_with_continent %>%
+        count(continent, source)
+      
+      # Calculate totals per continent for ordering and percentages
+      continent_totals <- plot_data %>%
+        group_by(continent) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(
+          percentage = round(100 * total / sum(total), 1),
+          label = paste0(total, " (", percentage, "%)")
+        ) %>%
+        arrange(total)
+      
+      # Create factor ordered by count
+      plot_data <- plot_data %>%
+        mutate(continent_factor = factor(continent, 
+                                         levels = continent_totals$continent))
+      
+      # Color palette for sources (same as epoch plot)
+      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+      
+      ggplot(plot_data, aes(x = continent_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(
+          data = continent_totals %>% 
+            mutate(continent_factor = factor(continent, levels = continent_totals$continent)),
+          aes(x = continent_factor, y = total, label = label, fill = NULL),
+          hjust = -0.1, size = 3.5, fontface = "bold"
+        ) +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(
+          title = "Occurrences by continent",
+          subtitle = "Distribution of fossil occurrences across continents with source breakdown",
+          x = NULL,
+          y = "Number of occurrences"
+        ) +
+        theme_minimal() +
+        theme(
+          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+          axis.text = element_text(size = 11),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold"),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor = element_blank()
+        ) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
     }
   })
   
