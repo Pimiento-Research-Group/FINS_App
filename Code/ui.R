@@ -294,17 +294,29 @@ ui <- tagList(
                    ),
                    
                    tabPanel("Data visualisation",
-                            h3("Data Visualisation"),
+                            h3("Data visualisation"),
                             
                             # Epoch plot
-                            h4("Temporal Distribution"),
+                            h4("Temporal distribution"),
                             plotOutput("placeholder_plot_occ", height = 400),
                             
                             tags$hr(),
                             
                             # Continent plot
-                            h4("Geographic Distribution"),
-                            plotOutput("continent_plot_occ", height = 350)
+                            h4("Geographic distribution"),
+                            plotOutput("continent_plot_occ", height = 350),
+                            
+                            tags$hr(),
+                            
+                            # Paleoocean plot
+                            h4("Paleogeographic distribution"),
+                            plotOutput("paleoocean_plot_occ", height = 400),
+                            
+                            tags$hr(),
+                            
+                            # Order plot
+                            h4("Taxonomic distribution"),
+                            plotOutput("order_plot_occ", height = 450)
                    )
                  )
                )  # End of mainPanel
