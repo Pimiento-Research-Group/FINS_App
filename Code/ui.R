@@ -372,14 +372,16 @@ ui <- tagList(
                  )
                ),
                mainPanel(
-                 wellPanel(
-                   style = "padding: 10px; margin-bottom: 15px; width: fit-content; min-width: 300px;",
-                   h5(style = "margin-top: 0;", "Collections by source"),
-                   tableOutput("source_counts_col")
+                 fluidRow(
+                   column(4, wellPanel(
+                     style = "padding: 10px; margin-bottom: 15px;",
+                     h5(style = "margin-top: 0;", "Collections by source"),
+                     tableOutput("source_counts_col")
+                   )),
+                   column(8, plotOutput("plot_types_col", height = 260))
                  ),
                  
                  leafletOutput("map_col", height = 430),
-                 plotOutput("plot_types_col", height = 260),
                  DTOutput("table_col")
                )
              )

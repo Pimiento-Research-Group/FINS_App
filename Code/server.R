@@ -724,13 +724,14 @@ server <- function(input, output, session) {
       } else {
         # Create color palette
         colors <- c(
-          "Africa" = "#e74c3c",
-          "Asia" = "#f39c12", 
-          "Europe" = "#3498db",
-          "North America" = "#2ecc71",
-          "South America" = "#9b59b6",
-          "Oceania" = "#1abc9c",
-          "Antarctica" = "#95a5a6",
+          "Africa" = "#EDAD08",
+          "Asia" = "#0F8554",           
+          "Europe" = "#38A6A5",
+          "North America" = "#1D6996",
+          "South America" = "#5F4690",
+          "Oceania" = "#CC503E",
+          "Ocean" = "#94346E",
+          "Antarctica" = "#E17C05",
           "Unknown" = "#7f8c8d"
         )
         
