@@ -1663,12 +1663,6 @@ server <- function(input, output, session) {
     df <- pbdb_occ_aligned()
     df <- as.data.frame(df, stringsAsFactors = FALSE)
     
-    # Remove completely empty columns (but keep m_ columns for now for highlighting)
-    cols_to_check <- !grepl("^m_", names(df))
-    empty_cols <- colSums(!is.na(df[, cols_to_check, drop = FALSE]) & df[, cols_to_check, drop = FALSE] != "") == 0
-    cols_to_remove <- names(df[, cols_to_check, drop = FALSE])[empty_cols]
-    df <- df[, !names(df) %in% cols_to_remove, drop = FALSE]
-    
     show <- head(df, 100)
     
     dt <- DT::datatable(
