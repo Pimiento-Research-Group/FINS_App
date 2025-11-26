@@ -1443,7 +1443,7 @@ server <- function(input, output, session) {
       rownames = FALSE
     )
     
-    tint <- "#fff7e6"
+    tint <- "#e6f3ff"
     
     color_cell <- function(col, mask) {
       if (col %in% names(show) && mask %in% names(show)) {
@@ -1661,22 +1661,46 @@ server <- function(input, output, session) {
     df <- pbdb_occ_aligned()
     df <- as.data.frame(df, stringsAsFactors = FALSE)
     
-    # Remove completely empty columns
-    df <- df[, colSums(!is.na(df) & df != "") > 0, drop = FALSE]
-    
-    # Remove marker columns from display
-    df <- df[, !grepl("^m_", names(df)), drop = FALSE]
+    # Remove completely empty columns (but keep m_ columns for now for highlighting)
+    cols_to_check <- !grepl("^m_", names(df))
+    empty_cols <- colSums(!is.na(df[, cols_to_check, drop = FALSE]) & df[, cols_to_check, drop = FALSE] != "") == 0
+    cols_to_remove <- names(df[, cols_to_check, drop = FALSE])[empty_cols]
+    df <- df[, !names(df) %in% cols_to_remove, drop = FALSE]
     
     show <- head(df, 100)
     
-    DT::datatable(
+    dt <- DT::datatable(
       show,
       options = list(
         pageLength = 10, 
-        scrollX = TRUE
+        scrollX = TRUE,
+        columnDefs = list(
+          list(targets = grep("^m_", names(show)) - 1L, visible = FALSE)
+        )
       ),
       rownames = FALSE
     )
+    
+    # Highlight enriched cells in light blue
+    if ("m_enriched_from_col" %in% names(show)) {
+      tint <- "#e6f3ff"
+      
+      enriched_cols <- c("max_ma", "min_ma", "age_range", "early_interval", "late_interval",
+                         "early_epoch", "late_epoch", "early_period", "late_period",
+                         "early_era", "late_era", "int_type", "latitude", "longitude",
+                         "continent", "latitude_band", "paleoocean", "paleolat", "paleolon",
+                         "locality_id")
+      
+      for (col in intersect(enriched_cols, names(show))) {
+        dt <- dt %>% DT::formatStyle(
+          columns = col,
+          valueColumns = "m_enriched_from_col",
+          backgroundColor = DT::styleEqual(c(TRUE, FALSE), c(tint, NA))
+        )
+      }
+    }
+    
+    dt
   })
   
   output$pbdb_occ_status <- renderUI({ NULL })
