@@ -730,7 +730,7 @@ server <- function(input, output, session) {
               axis.text = element_text(size = 11), legend.position = "bottom",
               legend.title = element_text(face = "bold"),
               panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
-        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+        scale_y_continuous(expand = expansion(mult = c(0, 0.25)))
     }
   })
   
