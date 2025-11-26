@@ -679,7 +679,7 @@ occ$source <- factor(occ$source, levels = source_levels)
 col$collection_source <- factor(col$collection_source, levels = source_levels)
 
 pal_source <- colorFactor(
-  palette = c("#b56a9c", "#037c6e", "#80c7ff"),  # PBDB, Literature, PBDB_U (light blue)
+  palette = c("#b56a9c", "#037c6e", "#FF6B6B"),  # PBDB, Literature, PBDB_U (light blue)
   levels  = source_levels
 )
 
