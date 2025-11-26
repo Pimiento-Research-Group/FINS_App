@@ -146,7 +146,14 @@ ui <- tagList(
                    h4("How to cite & Contact"),
                    tags$div(
                      h5("How to cite FINS?"),
-                     p("Kocakova et al. FINS - A global occurrence dataset of fossil sharks, rays and skates from the Cretaceous to the Quaternary"),
+                     p(
+                       "Kocáková, K., Villafaña, J., Gardiner, A., Mathes, G., & Pimiento, C. (2025). ",
+                       tags$em("FINS - A global occurrence dataset of fossil neoselachians from the Cretaceous to the Quaternary"),
+                       ". Biorxiv. ",
+                       tags$a(href = "https://doi.org/10.1101/2025.11.21.689757", 
+                              "https://doi.org/10.1101/2025.11.21.689757", 
+                              target = "_blank")
+                     ),
                      tags$hr(),
                      h5("Contact us"),
                      p("If you would like to report an error or provide a suggestion on how to improve our platform please contact us via the email below."),
