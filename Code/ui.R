@@ -29,15 +29,20 @@ ui <- tagList(
         color: #ffffff !important;
       }
       
-      /* Active 'Add data' tab - looks like other active tabs */
-      .navbar-default .navbar-nav > li.active > a[data-value='Add data'],
-      .navbar-default .navbar-nav > li.active > a[data-value='Add data']:hover,
-      .navbar-default .navbar-nav > li.active > a[data-value='Add data']:focus {
-        background-color: #8fb3a3 !important;
-        color: #ffffff !important;
-        border-radius: 0 !important;
-        margin: 0 !important;
-      }
+      /* 'Add data' tab - metallic silver with transparency */
+.navbar-default .navbar-nav > li > a[data-value='Add data'] {
+  background-color: rgba(183, 192, 199, 0.5) !important;
+  color: #ffffff !important;
+}
+
+.navbar-default .navbar-nav > li > a[data-value='Add data']:hover,
+.navbar-default .navbar-nav > li > a[data-value='Add data']:focus,
+.navbar-default .navbar-nav > li.active > a[data-value='Add data'],
+.navbar-default .navbar-nav > li.active > a[data-value='Add data']:hover,
+.navbar-default .navbar-nav > li.active > a[data-value='Add data']:focus {
+  background-color: rgba(183, 192, 199, 0.7) !important;
+  color: #2c3e50 !important;
+}
       
       /* Sidebar panels */
       .well {
