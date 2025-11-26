@@ -1566,7 +1566,7 @@ server <- function(input, output, session) {
       return(out)
     }
     
-    # Columns to populate from collections
+    # Columns to populate from collections (using collection column names)
     cols_from_collections <- c(
       "max_ma", "min_ma", "age_range",
       "early_interval", "late_interval",
@@ -1577,7 +1577,8 @@ server <- function(input, output, session) {
       "latitude", "longitude",
       "continent", "latitude_band",
       "paleoocean",
-      "paleolatitude", "paleolongitude"
+      "paleolatitude", "paleolongitude",
+      "locality_id"
     )
     
     # Keep only columns that exist in collections
@@ -1615,7 +1616,21 @@ server <- function(input, output, session) {
       }
     }
     
-    # Add marker columns to show which values came from collections
+    # Rename columns to match occurrence schema
+    if ("time_interval_type" %in% names(out_enriched)) {
+      out_enriched$int_type <- out_enriched$time_interval_type
+      out_enriched$time_interval_type <- NULL
+    }
+    if ("paleolatitude" %in% names(out_enriched)) {
+      out_enriched$paleolat <- out_enriched$paleolatitude
+      out_enriched$paleolatitude <- NULL
+    }
+    if ("paleolongitude" %in% names(out_enriched)) {
+      out_enriched$paleolon <- out_enriched$paleolongitude
+      out_enriched$paleolongitude <- NULL
+    }
+    
+    # Add marker column to show which values came from collections
     out_enriched$m_enriched_from_col <- out_enriched$coll_id %in% col_for_join$coll_id
     
     # Count successful joins
@@ -1646,39 +1661,22 @@ server <- function(input, output, session) {
     df <- pbdb_occ_aligned()
     df <- as.data.frame(df, stringsAsFactors = FALSE)
     
+    # Remove completely empty columns
+    df <- df[, colSums(!is.na(df) & df != "") > 0, drop = FALSE]
+    
+    # Remove marker columns from display
+    df <- df[, !grepl("^m_", names(df)), drop = FALSE]
+    
     show <- head(df, 100)
     
-    dt <- DT::datatable(
+    DT::datatable(
       show,
       options = list(
         pageLength = 10, 
-        scrollX = TRUE,
-        columnDefs = list(
-          list(targets = grep("^m_", names(show)) - 1L, visible = FALSE)
-        )
+        scrollX = TRUE
       ),
       rownames = FALSE
     )
-    
-    # Highlight enriched rows
-    if ("m_enriched_from_col" %in% names(show)) {
-      enriched_cols <- c("max_ma", "min_ma", "age_range", "early_interval", "late_interval",
-                         "early_epoch", "late_epoch", "early_period", "late_period",
-                         "early_era", "late_era", "time_interval_type", "latitude", "longitude",
-                         "continent", "latitude_band", "paleoocean", "paleolatitude", "paleolongitude")
-      
-      tint <- "#e6f3ff"  # Light blue for enriched cells
-      
-      for (col in intersect(enriched_cols, names(show))) {
-        dt <- dt %>% DT::formatStyle(
-          columns = col,
-          valueColumns = "m_enriched_from_col",
-          backgroundColor = DT::styleEqual(c(TRUE, FALSE), c(tint, NA))
-        )
-      }
-    }
-    
-    dt
   })
   
   output$pbdb_occ_status <- renderUI({ NULL })
