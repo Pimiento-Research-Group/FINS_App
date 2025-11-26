@@ -124,7 +124,13 @@ server <- function(input, output, session) {
     occurrence_number <- ifelse(!is.na(occ_no_chr) & occ_no_chr != "",
                                 paste0("PBDB_", occ_no_chr), NA_character_)
     
-    colno_raw <- if (!all(is.na(df[["collection_number"]]))) df[["collection_number"]] else df[["collection_number"]]
+    colno_raw <- if ("collection_no" %in% names(df) && !all(is.na(df[["collection_no"]]))) {
+      df[["collection_no"]]
+    } else if ("collection_number" %in% names(df) && !all(is.na(df[["collection_number"]]))) {
+      df[["collection_number"]]
+    } else {
+      NA
+    }
     colno_chr <- suppressWarnings(as.character(colno_raw))
     coll_id <- ifelse(!is.na(colno_chr) & colno_chr != "",
                       paste0("PBDB_", colno_chr), NA_character_)
@@ -176,7 +182,7 @@ server <- function(input, output, session) {
     } else {
       # Default About content if file doesn't exist
       tags$div(
-        p(strong("FINS"), " (FossIl NeoselachianS) is a comprehensive global database of fossil sharks, rays, and skates."),
+        p(strong("FINS"), " (FossIl NeoSelachians) is a comprehensive global database of fossil sharks, rays, and skates."),
         h5("Database Contents"),
         tags$ul(
           tags$li("Fossil occurrence records with detailed taxonomic information"),
@@ -561,6 +567,302 @@ server <- function(input, output, session) {
     content  = function(file) write.csv(occ_filtered(), file, row.names = FALSE)
   )
   
+  # ----- Data Visualisation Charts -----
+  
+  # Dynamic container for charts
+  output$charts_container_occ <- renderUI({
+    selected <- input$chart_selector_occ
+    
+    if (length(selected) == 0) {
+      return(p("Select at least one visualisation above.", style = "color: #666; font-style: italic;"))
+    }
+    
+    plot_list <- list()
+    
+    if ("epoch" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Temporal distribution"),
+        plotOutput("epoch_plot_occ", height = 400),
+        tags$hr()
+      ))
+    }
+    
+    if ("continent" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Geographic distribution"),
+        plotOutput("continent_plot_occ", height = 350),
+        tags$hr()
+      ))
+    }
+    
+    if ("paleoocean" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Paleogeographic distribution"),
+        plotOutput("paleoocean_plot_occ", height = 400),
+        tags$hr()
+      ))
+    }
+    
+    if ("order" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Taxonomic distribution"),
+        plotOutput("order_plot_occ", height = 450),
+        tags$hr()
+      ))
+    }
+    
+    if ("rank" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Taxonomic rank distribution"),
+        plotOutput("rank_plot_occ", height = 300),
+        tags$hr()
+      ))
+    }
+    
+    # Remove last hr
+    if (length(plot_list) > 0) {
+      plot_list <- plot_list[-length(plot_list)]
+    }
+    
+    do.call(tagList, plot_list)
+  })
+  
+  # Color palette for sources (shared)
+  source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+  
+  # EPOCH CHART
+  output$epoch_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    epoch_boundaries <- data.frame(
+      epoch = c("Early Cretaceous", "Late Cretaceous", "Paleocene", "Eocene", 
+                "Oligocene", "Miocene", "Pliocene", "Pleistocene", "Holocene"),
+      min_age = c(145, 100.5, 66, 56, 33.9, 23.03, 5.333, 2.58, 0.0117),
+      max_age = c(100.5, 66, 56, 33.9, 23.03, 5.333, 2.58, 0.0117, 0),
+      stringsAsFactors = FALSE
+    )
+    
+    classify_epoch <- function(min_ma, max_ma) {
+      if (is.na(min_ma) || is.na(max_ma)) return(NA_character_)
+      overlaps <- epoch_boundaries[
+        max_ma >= epoch_boundaries$min_age & min_ma <= epoch_boundaries$max_age,
+      ]
+      if (nrow(overlaps) == 0) return(NA_character_)
+      if (nrow(overlaps) == 1) return(overlaps$epoch[1])
+      midpoint <- (min_ma + max_ma) / 2
+      idx <- which(midpoint >= overlaps$min_age & midpoint <= overlaps$max_age)
+      if (length(idx) > 0) overlaps$epoch[idx[1]] else NA_character_
+    }
+    
+    df_classified <- df %>%
+      filter(!is.na(min_ma), !is.na(max_ma)) %>%
+      mutate(epoch_classified = mapply(classify_epoch, min_ma, max_ma, SIMPLIFY = TRUE, USE.NAMES = FALSE)) %>%
+      filter(!is.na(epoch_classified))
+    
+    if (nrow(df_classified) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No data with valid age ranges", size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      plot_data <- df_classified %>% count(epoch_classified, source)
+      epoch_totals <- plot_data %>%
+        group_by(epoch_classified) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
+        arrange(total)
+      plot_data <- plot_data %>%
+        mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified))
+      
+      ggplot(plot_data, aes(x = epoch_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(data = epoch_totals %>% mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified)),
+                  aes(x = epoch_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(title = "Occurrences by epoch",
+             subtitle = "Based on age range (min_ma - max_ma) overlap with epoch boundaries",
+             x = NULL, y = "Number of occurrences") +
+        theme_minimal() +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+    }
+  })
+  
+  # CONTINENT CHART
+  output$continent_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    df_with_continent <- df %>%
+      mutate(continent = ifelse(is.na(continent) | continent == "", "Unknown", continent))
+    
+    if (nrow(df_with_continent) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      plot_data <- df_with_continent %>% count(continent, source)
+      continent_totals <- plot_data %>%
+        group_by(continent) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
+        arrange(total)
+      plot_data <- plot_data %>%
+        mutate(continent_factor = factor(continent, levels = continent_totals$continent))
+      
+      ggplot(plot_data, aes(x = continent_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(data = continent_totals %>% mutate(continent_factor = factor(continent, levels = continent_totals$continent)),
+                  aes(x = continent_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(title = "Occurrences by continent",
+             subtitle = "Distribution of fossil occurrences across continents with source breakdown",
+             x = NULL, y = "Number of occurrences") +
+        theme_minimal() +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+    }
+  })
+  
+  # PALEOOCEAN CHART
+  output$paleoocean_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    df_with_paleoocean <- df %>%
+      mutate(paleoocean = ifelse(is.na(paleoocean) | paleoocean == "", "Unknown", paleoocean))
+    
+    if (nrow(df_with_paleoocean) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      plot_data <- df_with_paleoocean %>% count(paleoocean, source)
+      paleoocean_totals <- plot_data %>%
+        group_by(paleoocean) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
+        arrange(total)
+      plot_data <- plot_data %>%
+        mutate(paleoocean_factor = factor(paleoocean, levels = paleoocean_totals$paleoocean))
+      
+      ggplot(plot_data, aes(x = paleoocean_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(data = paleoocean_totals %>% mutate(paleoocean_factor = factor(paleoocean, levels = paleoocean_totals$paleoocean)),
+                  aes(x = paleoocean_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(title = "Occurrences by paleoocean",
+             subtitle = "Distribution of fossil occurrences across ancient ocean basins with source breakdown",
+             x = NULL, y = "Number of occurrences") +
+        theme_minimal() +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+    }
+  })
+  
+  # ORDER CHART
+  output$order_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    df_with_order <- df %>%
+      mutate(order = ifelse(is.na(order) | order == "", "Unknown", order))
+    
+    if (nrow(df_with_order) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      plot_data <- df_with_order %>% count(order, source)
+      order_totals <- plot_data %>%
+        group_by(order) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
+        arrange(total)
+      plot_data <- plot_data %>%
+        mutate(order_factor = factor(order, levels = order_totals$order))
+      
+      ggplot(plot_data, aes(x = order_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(data = order_totals %>% mutate(order_factor = factor(order, levels = order_totals$order)),
+                  aes(x = order_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(title = "Occurrences by order",
+             subtitle = "Taxonomic distribution of fossil occurrences with source breakdown",
+             x = NULL, y = "Number of occurrences") +
+        theme_minimal() +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+    }
+  })
+  
+  # RANK CHART
+  output$rank_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    df_with_rank <- df %>%
+      mutate(
+        rank_grouped = case_when(
+          is.na(rank) | rank == "" ~ "Unknown",
+          tolower(rank) %in% c("species", "genus", "family", "order") ~ tools::toTitleCase(tolower(rank)),
+          TRUE ~ "Other"
+        )
+      )
+    
+    if (nrow(df_with_rank) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      plot_data <- df_with_rank %>% count(rank_grouped, source)
+      rank_totals <- plot_data %>%
+        group_by(rank_grouped) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
+        arrange(total)
+      plot_data <- plot_data %>%
+        mutate(rank_factor = factor(rank_grouped, levels = rank_totals$rank_grouped))
+      
+      ggplot(plot_data, aes(x = rank_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(data = rank_totals %>% mutate(rank_factor = factor(rank_grouped, levels = rank_totals$rank_grouped)),
+                  aes(x = rank_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(title = "Occurrences by taxonomic rank",
+             subtitle = "Distribution by identification precision (species, genus, family, order, and other)",
+             x = NULL, y = "Number of occurrences") +
+        theme_minimal() +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+    }
+  })
+  
   # ----- Collections tab -----
   
   # Select All / Clear All observers for Collections filters
@@ -724,13 +1026,14 @@ server <- function(input, output, session) {
       } else {
         # Create color palette
         colors <- c(
-          "Africa" = "#e74c3c",
-          "Asia" = "#f39c12", 
-          "Europe" = "#3498db",
-          "North America" = "#2ecc71",
-          "South America" = "#9b59b6",
-          "Oceania" = "#1abc9c",
-          "Antarctica" = "#95a5a6",
+          "Africa" = "#EDAD08",
+          "Asia" = "#0F8554",           
+          "Europe" = "#38A6A5",
+          "North America" = "#1D6996",
+          "South America" = "#5F4690",
+          "Oceania" = "#CC503E",
+          "Ocean" = "#94346E",
+          "Antarctica" = "#E17C05",
           "Unknown" = "#7f8c8d"
         )
         
@@ -1249,7 +1552,90 @@ server <- function(input, output, session) {
   pbdb_occ_processed <- reactive({
     df <- pbdb_occ_raw()
     validate(need(!is.null(df), "Upload an Occurrences CSV to preview."))
-    process_pbdb_occurrences(df, keep_only_needed = TRUE)
+    
+    # Process basic occurrence data
+    out <- process_pbdb_occurrences(df, keep_only_needed = TRUE)
+    
+    # Get current collections data
+    col_data <- rv$col
+    
+    # Check if we have collections to join with
+    if (is.null(col_data) || nrow(col_data) == 0) {
+      showNotification("No collections data available. Upload collections first to enrich occurrences.", 
+                       type = "warning", duration = 5)
+      return(out)
+    }
+    
+    # Columns to populate from collections
+    cols_from_collections <- c(
+      "max_ma", "min_ma", "age_range",
+      "early_interval", "late_interval",
+      "early_epoch", "late_epoch",
+      "early_period", "late_period",
+      "early_era", "late_era",
+      "time_interval_type",
+      "latitude", "longitude",
+      "continent", "latitude_band",
+      "paleoocean",
+      "paleolatitude", "paleolongitude"
+    )
+    
+    # Keep only columns that exist in collections
+    cols_available <- intersect(cols_from_collections, names(col_data))
+    
+    if (length(cols_available) == 0) {
+      showNotification("Collections data doesn't have expected columns for enrichment.", 
+                       type = "warning", duration = 5)
+      return(out)
+    }
+    
+    # Prepare collections data for join (select coll_id and relevant columns)
+    col_for_join <- col_data %>%
+      select(coll_id, all_of(cols_available)) %>%
+      distinct(coll_id, .keep_all = TRUE)
+    
+    # Join occurrences with collections
+    out_enriched <- out %>%
+      left_join(col_for_join, by = "coll_id", suffix = c("", "_from_col"))
+    
+    # For any columns that exist in both, use the collection value if occurrence value is NA
+    for (col_name in cols_available) {
+      if (col_name %in% names(out)) {
+        from_col_name <- paste0(col_name, "_from_col")
+        if (from_col_name %in% names(out_enriched)) {
+          out_enriched[[col_name]] <- dplyr::coalesce(out_enriched[[col_name]], out_enriched[[from_col_name]])
+          out_enriched[[from_col_name]] <- NULL
+        }
+      } else {
+        # Column doesn't exist in occurrences, it was added from collections - rename if needed
+        from_col_name <- paste0(col_name, "_from_col")
+        if (from_col_name %in% names(out_enriched)) {
+          names(out_enriched)[names(out_enriched) == from_col_name] <- col_name
+        }
+      }
+    }
+    
+    # Add marker columns to show which values came from collections
+    out_enriched$m_enriched_from_col <- out_enriched$coll_id %in% col_for_join$coll_id
+    
+    # Count successful joins
+    
+    n_matched <- sum(out_enriched$m_enriched_from_col, na.rm = TRUE)
+    n_total <- nrow(out_enriched)
+    
+    if (n_matched > 0) {
+      showNotification(
+        sprintf("Enriched %d/%d occurrences with collection data.", n_matched, n_total),
+        type = "message", duration = 4
+      )
+    } else {
+      showNotification(
+        "No occurrences matched with collections. Check collection IDs.",
+        type = "warning", duration = 5
+      )
+    }
+    
+    out_enriched
   })
   
   pbdb_occ_aligned <- reactive({
@@ -1259,7 +1645,40 @@ server <- function(input, output, session) {
   output$pbdb_occ_preview <- renderDT({
     df <- pbdb_occ_aligned()
     df <- as.data.frame(df, stringsAsFactors = FALSE)
-    DT::datatable(head(df, 100), options = list(pageLength = 10, scrollX = TRUE))
+    
+    show <- head(df, 100)
+    
+    dt <- DT::datatable(
+      show,
+      options = list(
+        pageLength = 10, 
+        scrollX = TRUE,
+        columnDefs = list(
+          list(targets = grep("^m_", names(show)) - 1L, visible = FALSE)
+        )
+      ),
+      rownames = FALSE
+    )
+    
+    # Highlight enriched rows
+    if ("m_enriched_from_col" %in% names(show)) {
+      enriched_cols <- c("max_ma", "min_ma", "age_range", "early_interval", "late_interval",
+                         "early_epoch", "late_epoch", "early_period", "late_period",
+                         "early_era", "late_era", "time_interval_type", "latitude", "longitude",
+                         "continent", "latitude_band", "paleoocean", "paleolatitude", "paleolongitude")
+      
+      tint <- "#e6f3ff"  # Light blue for enriched cells
+      
+      for (col in intersect(enriched_cols, names(show))) {
+        dt <- dt %>% DT::formatStyle(
+          columns = col,
+          valueColumns = "m_enriched_from_col",
+          backgroundColor = DT::styleEqual(c(TRUE, FALSE), c(tint, NA))
+        )
+      }
+    }
+    
+    dt
   })
   
   output$pbdb_occ_status <- renderUI({ NULL })

@@ -13,6 +13,7 @@ library(rgplates)
 library(digest)
 library(here)
 library(shinyBS)
+library(forcats)
 
 # ---------- Options ----------
 options(shiny.maxRequestSize = 50 * 1024^2)  # allow up to 50MB uploads

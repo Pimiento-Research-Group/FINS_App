@@ -125,7 +125,7 @@ ui <- tagList(
     # ---- WELCOME / README ----
     tabPanel("Home",
              fluidPage(
-               h2("FINS - FossIl NeoselachianS - app"),
+               h2("FINS - FossIl NeoSelachians - app"),
                p("This app allows users to explore and add data to the FINS dataset, which consists of fossil occurrences, each linked to a collection and reference."),
                tags$hr(),
                fluidRow(
@@ -275,20 +275,44 @@ ui <- tagList(
                  )
                ),
                mainPanel(
-                 fluidRow(
-                   column(6, wellPanel(
-                     style = "padding: 10px; margin-bottom: 10px;",
-                     h5(style = "margin-top: 0;", "Counts by source"),
-                     tableOutput("source_counts_occ")
-                   )),
-                   column(6, wellPanel(
-                     style = "padding: 10px; margin-bottom: 10px;",
-                     h5(style = "margin-top: 0;", "Curation snapshot"),
-                     htmlOutput("curation_snapshot_occ")
-                   ))
-                 ),
-                 leafletOutput("map_occ", height = 550),
-                 DTOutput("table_occ")
+                 tabsetPanel(
+                   tabPanel("Dynamic map",
+                            fluidRow(
+                              column(6, wellPanel(
+                                style = "padding: 10px; margin-bottom: 10px;",
+                                h5(style = "margin-top: 0;", "Counts by source"),
+                                tableOutput("source_counts_occ")
+                              )),
+                              column(6, wellPanel(
+                                style = "padding: 10px; margin-bottom: 10px;",
+                                h5(style = "margin-top: 0;", "Curation snapshot"),
+                                htmlOutput("curation_snapshot_occ")
+                              ))
+                            ),
+                            leafletOutput("map_occ", height = 550),
+                            DTOutput("table_occ")
+                   ),
+                   
+                   tabPanel("Data visualisation",
+                            h3("Data visualisation"),
+                            
+                            checkboxGroupInput("chart_selector_occ", "Select visualisations to display:",
+                                               choices = c(
+                                                 "Temporal distribution (epoch)" = "epoch",
+                                                 "Geographic distribution (continent)" = "continent",
+                                                 "Paleogeographic distribution (paleoocean)" = "paleoocean",
+                                                 "Taxonomic distribution (order)" = "order",
+                                                 "Taxonomic rank distribution" = "rank"
+                                               ),
+                                               selected = c("epoch", "continent"),  # Default selections
+                                               inline = TRUE
+                            ),
+                            
+                            tags$hr(),
+                            
+                            uiOutput("charts_container_occ")
+                   )
+                 )
                )  # End of mainPanel
              )  # End of sidebarLayout
     ),  # End of tabPanel("Occurrences")
@@ -372,14 +396,16 @@ ui <- tagList(
                  )
                ),
                mainPanel(
-                 wellPanel(
-                   style = "padding: 10px; margin-bottom: 15px; width: fit-content; min-width: 300px;",
-                   h5(style = "margin-top: 0;", "Collections by source"),
-                   tableOutput("source_counts_col")
+                 fluidRow(
+                   column(4, wellPanel(
+                     style = "padding: 10px; margin-bottom: 15px;",
+                     h5(style = "margin-top: 0;", "Collections by source"),
+                     tableOutput("source_counts_col")
+                   )),
+                   column(8, plotOutput("plot_types_col", height = 260))
                  ),
                  
                  leafletOutput("map_col", height = 430),
-                 plotOutput("plot_types_col", height = 260),
                  DTOutput("table_col")
                )
              )
@@ -433,7 +459,15 @@ ui <- tagList(
                  actionButton("pbdb_col_apply", "Apply Collections", class = "btn-primary"),
                  tags$hr(),
                  
+                 tags$hr(),
+                 
                  h4("Upload PBDB Occurrences"),
+                 tags$div(
+                   class = "alert alert-warning",
+                   style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
+                   tags$strong("⚠️ Important: "),
+                   "Before uploading occurrences, make sure you upload collections first. Occurrence data will be enriched with geographic and temporal information from matching collections."
+                 ),
                  fileInput("pbdb_occ_file", "Choose PBDB Occurrences CSV",
                            accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
                  radioButtons("pbdb_occ_mode", "Apply to Occurrences:",
