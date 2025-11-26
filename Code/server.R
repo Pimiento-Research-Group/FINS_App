@@ -1646,39 +1646,22 @@ server <- function(input, output, session) {
     df <- pbdb_occ_aligned()
     df <- as.data.frame(df, stringsAsFactors = FALSE)
     
+    # Remove completely empty columns
+    df <- df[, colSums(!is.na(df) & df != "") > 0, drop = FALSE]
+    
+    # Remove marker columns from display
+    df <- df[, !grepl("^m_", names(df)), drop = FALSE]
+    
     show <- head(df, 100)
     
-    dt <- DT::datatable(
+    DT::datatable(
       show,
       options = list(
         pageLength = 10, 
-        scrollX = TRUE,
-        columnDefs = list(
-          list(targets = grep("^m_", names(show)) - 1L, visible = FALSE)
-        )
+        scrollX = TRUE
       ),
       rownames = FALSE
     )
-    
-    # Highlight enriched rows
-    if ("m_enriched_from_col" %in% names(show)) {
-      enriched_cols <- c("max_ma", "min_ma", "age_range", "early_interval", "late_interval",
-                         "early_epoch", "late_epoch", "early_period", "late_period",
-                         "early_era", "late_era", "time_interval_type", "latitude", "longitude",
-                         "continent", "latitude_band", "paleoocean", "paleolatitude", "paleolongitude")
-      
-      tint <- "#e6f3ff"  # Light blue for enriched cells
-      
-      for (col in intersect(enriched_cols, names(show))) {
-        dt <- dt %>% DT::formatStyle(
-          columns = col,
-          valueColumns = "m_enriched_from_col",
-          backgroundColor = DT::styleEqual(c(TRUE, FALSE), c(tint, NA))
-        )
-      }
-    }
-    
-    dt
   })
   
   output$pbdb_occ_status <- renderUI({ NULL })
