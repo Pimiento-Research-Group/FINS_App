@@ -1276,6 +1276,7 @@ server <- function(input, output, session) {
         n <- length(lat_num)
         for (i in seq_len(n)) {
           if (m_paleo[i]) { incProgress(1/n); next }
+          
           res <- .paleo_mc_median(
             lon    = lon_num[i],
             lat    = lat_num[i],
@@ -1283,6 +1284,7 @@ server <- function(input, output, session) {
             max_ma = min_ma_num[i],
             n = 30
           )
+          
           paleolon[i]   <- res$xy[1]
           paleolat[i]   <- res$xy[2]
           m_paleo[i]    <- isTRUE(res$ok)
