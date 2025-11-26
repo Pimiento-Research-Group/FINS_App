@@ -124,7 +124,13 @@ server <- function(input, output, session) {
     occurrence_number <- ifelse(!is.na(occ_no_chr) & occ_no_chr != "",
                                 paste0("PBDB_", occ_no_chr), NA_character_)
     
-    colno_raw <- if (!all(is.na(df[["collection_number"]]))) df[["collection_number"]] else df[["collection_number"]]
+    colno_raw <- if ("collection_no" %in% names(df) && !all(is.na(df[["collection_no"]]))) {
+      df[["collection_no"]]
+    } else if ("collection_number" %in% names(df) && !all(is.na(df[["collection_number"]]))) {
+      df[["collection_number"]]
+    } else {
+      NA
+    }
     colno_chr <- suppressWarnings(as.character(colno_raw))
     coll_id <- ifelse(!is.na(colno_chr) & colno_chr != "",
                       paste0("PBDB_", colno_chr), NA_character_)
@@ -1546,7 +1552,90 @@ server <- function(input, output, session) {
   pbdb_occ_processed <- reactive({
     df <- pbdb_occ_raw()
     validate(need(!is.null(df), "Upload an Occurrences CSV to preview."))
-    process_pbdb_occurrences(df, keep_only_needed = TRUE)
+    
+    # Process basic occurrence data
+    out <- process_pbdb_occurrences(df, keep_only_needed = TRUE)
+    
+    # Get current collections data
+    col_data <- rv$col
+    
+    # Check if we have collections to join with
+    if (is.null(col_data) || nrow(col_data) == 0) {
+      showNotification("No collections data available. Upload collections first to enrich occurrences.", 
+                       type = "warning", duration = 5)
+      return(out)
+    }
+    
+    # Columns to populate from collections
+    cols_from_collections <- c(
+      "max_ma", "min_ma", "age_range",
+      "early_interval", "late_interval",
+      "early_epoch", "late_epoch",
+      "early_period", "late_period",
+      "early_era", "late_era",
+      "time_interval_type",
+      "latitude", "longitude",
+      "continent", "latitude_band",
+      "paleoocean",
+      "paleolatitude", "paleolongitude"
+    )
+    
+    # Keep only columns that exist in collections
+    cols_available <- intersect(cols_from_collections, names(col_data))
+    
+    if (length(cols_available) == 0) {
+      showNotification("Collections data doesn't have expected columns for enrichment.", 
+                       type = "warning", duration = 5)
+      return(out)
+    }
+    
+    # Prepare collections data for join (select coll_id and relevant columns)
+    col_for_join <- col_data %>%
+      select(coll_id, all_of(cols_available)) %>%
+      distinct(coll_id, .keep_all = TRUE)
+    
+    # Join occurrences with collections
+    out_enriched <- out %>%
+      left_join(col_for_join, by = "coll_id", suffix = c("", "_from_col"))
+    
+    # For any columns that exist in both, use the collection value if occurrence value is NA
+    for (col_name in cols_available) {
+      if (col_name %in% names(out)) {
+        from_col_name <- paste0(col_name, "_from_col")
+        if (from_col_name %in% names(out_enriched)) {
+          out_enriched[[col_name]] <- dplyr::coalesce(out_enriched[[col_name]], out_enriched[[from_col_name]])
+          out_enriched[[from_col_name]] <- NULL
+        }
+      } else {
+        # Column doesn't exist in occurrences, it was added from collections - rename if needed
+        from_col_name <- paste0(col_name, "_from_col")
+        if (from_col_name %in% names(out_enriched)) {
+          names(out_enriched)[names(out_enriched) == from_col_name] <- col_name
+        }
+      }
+    }
+    
+    # Add marker columns to show which values came from collections
+    out_enriched$m_enriched_from_col <- out_enriched$coll_id %in% col_for_join$coll_id
+    
+    # Count successful joins
+    
+    n_matched <- sum(out_enriched$m_enriched_from_col, na.rm = TRUE)
+    n_total <- nrow(out_enriched)
+    
+    if (n_matched > 0) {
+      showNotification(
+        sprintf("Enriched %d/%d occurrences with collection data.", n_matched, n_total),
+        type = "message", duration = 4
+      )
+    } else {
+      showNotification(
+        "No occurrences matched with collections. Check collection IDs.",
+        type = "warning", duration = 5
+      )
+    }
+    
+    out_enriched
   })
   
   pbdb_occ_aligned <- reactive({
@@ -1556,7 +1645,40 @@ server <- function(input, output, session) {
   output$pbdb_occ_preview <- renderDT({
     df <- pbdb_occ_aligned()
     df <- as.data.frame(df, stringsAsFactors = FALSE)
-    DT::datatable(head(df, 100), options = list(pageLength = 10, scrollX = TRUE))
+    
+    show <- head(df, 100)
+    
+    dt <- DT::datatable(
+      show,
+      options = list(
+        pageLength = 10, 
+        scrollX = TRUE,
+        columnDefs = list(
+          list(targets = grep("^m_", names(show)) - 1L, visible = FALSE)
+        )
+      ),
+      rownames = FALSE
+    )
+    
+    # Highlight enriched rows
+    if ("m_enriched_from_col" %in% names(show)) {
+      enriched_cols <- c("max_ma", "min_ma", "age_range", "early_interval", "late_interval",
+                         "early_epoch", "late_epoch", "early_period", "late_period",
+                         "early_era", "late_era", "time_interval_type", "latitude", "longitude",
+                         "continent", "latitude_band", "paleoocean", "paleolatitude", "paleolongitude")
+      
+      tint <- "#e6f3ff"  # Light blue for enriched cells
+      
+      for (col in intersect(enriched_cols, names(show))) {
+        dt <- dt %>% DT::formatStyle(
+          columns = col,
+          valueColumns = "m_enriched_from_col",
+          backgroundColor = DT::styleEqual(c(TRUE, FALSE), c(tint, NA))
+        )
+      }
+    }
+    
+    dt
   })
   
   output$pbdb_occ_status <- renderUI({ NULL })

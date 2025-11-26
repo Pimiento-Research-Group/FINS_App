@@ -459,7 +459,15 @@ ui <- tagList(
                  actionButton("pbdb_col_apply", "Apply Collections", class = "btn-primary"),
                  tags$hr(),
                  
+                 tags$hr(),
+                 
                  h4("Upload PBDB Occurrences"),
+                 tags$div(
+                   class = "alert alert-warning",
+                   style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
+                   tags$strong("⚠️ Important: "),
+                   "Before uploading occurrences, make sure you upload collections first. Occurrence data will be enriched with geographic and temporal information from matching collections."
+                 ),
                  fileInput("pbdb_occ_file", "Choose PBDB Occurrences CSV",
                            accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
                  radioButtons("pbdb_occ_mode", "Apply to Occurrences:",
