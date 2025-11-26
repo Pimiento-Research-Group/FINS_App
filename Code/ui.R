@@ -296,33 +296,21 @@ ui <- tagList(
                    tabPanel("Data visualisation",
                             h3("Data visualisation"),
                             
-                            # Epoch plot
-                            h4("Temporal distribution"),
-                            plotOutput("placeholder_plot_occ", height = 400),
+                            checkboxGroupInput("chart_selector_occ", "Select visualisations to display:",
+                                               choices = c(
+                                                 "Temporal distribution (epoch)" = "epoch",
+                                                 "Geographic distribution (continent)" = "continent",
+                                                 "Paleogeographic distribution (paleoocean)" = "paleoocean",
+                                                 "Taxonomic distribution (order)" = "order",
+                                                 "Taxonomic rank distribution" = "rank"
+                                               ),
+                                               selected = c("epoch", "continent"),  # Default selections
+                                               inline = TRUE
+                            ),
                             
                             tags$hr(),
                             
-                            # Continent plot
-                            h4("Geographic distribution"),
-                            plotOutput("continent_plot_occ", height = 350),
-                            
-                            tags$hr(),
-                            
-                            # Paleoocean plot
-                            h4("Paleogeographic distribution"),
-                            plotOutput("paleoocean_plot_occ", height = 400),
-                            
-                            tags$hr(),
-                            
-                            # Order plot
-                            h4("Taxonomic distribution"),
-                            plotOutput("order_plot_occ", height = 450),
-                            
-                            tags$hr(),
-                            
-                            # Rank plot
-                            h4("Taxonomic rank distribution"),
-                            plotOutput("rank_plot_occ", height = 300)
+                            uiOutput("charts_container_occ")
                    )
                  )
                )  # End of mainPanel

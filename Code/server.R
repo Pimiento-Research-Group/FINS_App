@@ -561,10 +561,73 @@ server <- function(input, output, session) {
     content  = function(file) write.csv(occ_filtered(), file, row.names = FALSE)
   )
   
-  output$placeholder_plot_occ <- renderPlot({
+  # ----- Data Visualisation Charts -----
+  
+  # Dynamic container for charts
+  output$charts_container_occ <- renderUI({
+    selected <- input$chart_selector_occ
+    
+    if (length(selected) == 0) {
+      return(p("Select at least one visualisation above.", style = "color: #666; font-style: italic;"))
+    }
+    
+    plot_list <- list()
+    
+    if ("epoch" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Temporal distribution"),
+        plotOutput("epoch_plot_occ", height = 400),
+        tags$hr()
+      ))
+    }
+    
+    if ("continent" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Geographic distribution"),
+        plotOutput("continent_plot_occ", height = 350),
+        tags$hr()
+      ))
+    }
+    
+    if ("paleoocean" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Paleogeographic distribution"),
+        plotOutput("paleoocean_plot_occ", height = 400),
+        tags$hr()
+      ))
+    }
+    
+    if ("order" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Taxonomic distribution"),
+        plotOutput("order_plot_occ", height = 450),
+        tags$hr()
+      ))
+    }
+    
+    if ("rank" %in% selected) {
+      plot_list <- c(plot_list, list(
+        h4("Taxonomic rank distribution"),
+        plotOutput("rank_plot_occ", height = 300),
+        tags$hr()
+      ))
+    }
+    
+    # Remove last hr
+    if (length(plot_list) > 0) {
+      plot_list <- plot_list[-length(plot_list)]
+    }
+    
+    do.call(tagList, plot_list)
+  })
+  
+  # Color palette for sources (shared)
+  source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+  
+  # EPOCH CHART
+  output$epoch_plot_occ <- renderPlot({
     df <- occ_filtered()
     
-    # Define epoch boundaries (Ma)
     epoch_boundaries <- data.frame(
       epoch = c("Early Cretaceous", "Late Cretaceous", "Paleocene", "Eocene", 
                 "Oligocene", "Miocene", "Pliocene", "Pleistocene", "Holocene"),
@@ -573,363 +636,227 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
     
-    # Create classification function that captures epoch_boundaries
     classify_epoch <- function(min_ma, max_ma) {
       if (is.na(min_ma) || is.na(max_ma)) return(NA_character_)
-      
-      # Find overlapping epochs
       overlaps <- epoch_boundaries[
         max_ma >= epoch_boundaries$min_age & min_ma <= epoch_boundaries$max_age,
       ]
-      
       if (nrow(overlaps) == 0) return(NA_character_)
       if (nrow(overlaps) == 1) return(overlaps$epoch[1])
-      
-      # Multiple overlaps: use midpoint
       midpoint <- (min_ma + max_ma) / 2
       idx <- which(midpoint >= overlaps$min_age & midpoint <= overlaps$max_age)
       if (length(idx) > 0) overlaps$epoch[idx[1]] else NA_character_
     }
     
-    # Apply classification (vectorized with mapply)
     df_classified <- df %>%
       filter(!is.na(min_ma), !is.na(max_ma)) %>%
-      mutate(
-        epoch_classified = mapply(classify_epoch, min_ma, max_ma, SIMPLIFY = TRUE, USE.NAMES = FALSE)
-      ) %>%
+      mutate(epoch_classified = mapply(classify_epoch, min_ma, max_ma, SIMPLIFY = TRUE, USE.NAMES = FALSE)) %>%
       filter(!is.na(epoch_classified))
     
     if (nrow(df_classified) == 0) {
       ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, 
-                 label = "No data with valid age ranges", 
-                 size = 8, color = "#4a6b6b") +
+        annotate("text", x = 0.5, y = 0.5, label = "No data with valid age ranges", size = 8, color = "#4a6b6b") +
         theme_void()
     } else {
-      # Count by epoch and source
-      plot_data <- df_classified %>%
-        count(epoch_classified, source)
-      
-      # Calculate totals per epoch for ordering and percentages
+      plot_data <- df_classified %>% count(epoch_classified, source)
       epoch_totals <- plot_data %>%
         group_by(epoch_classified) %>%
         summarise(total = sum(n), .groups = "drop") %>%
-        mutate(
-          percentage = round(100 * total / sum(total), 1),
-          label = paste0(total, " (", percentage, "%)")
-        ) %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
         arrange(total)
-      
-      # Create factor ordered by count
       plot_data <- plot_data %>%
-        mutate(epoch_factor = factor(epoch_classified, 
-                                     levels = epoch_totals$epoch_classified))
-      
-      # Color palette for sources
-      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+        mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified))
       
       ggplot(plot_data, aes(x = epoch_factor, y = n, fill = source)) +
         geom_col(position = "stack") +
-        geom_text(
-          data = epoch_totals %>% 
-            mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified)),
-          aes(x = epoch_factor, y = total, label = label, fill = NULL),
-          hjust = -0.2, size = 3.5, fontface = "bold"
-        ) +
+        geom_text(data = epoch_totals %>% mutate(epoch_factor = factor(epoch_classified, levels = epoch_totals$epoch_classified)),
+                  aes(x = epoch_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
         scale_fill_manual(values = source_colors, name = "Source") +
         coord_flip() +
-        labs(
-          title = "Occurrences by epoch",
-          subtitle = "Based on age range (min_ma - max_ma) overlap with epoch boundaries",
-          x = NULL,
-          y = "Number of occurrences"
-        ) +
+        labs(title = "Occurrences by epoch",
+             subtitle = "Based on age range (min_ma - max_ma) overlap with epoch boundaries",
+             x = NULL, y = "Number of occurrences") +
         theme_minimal() +
-        theme(
-          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
-          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
-          axis.text = element_text(size = 11),
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          panel.grid.major.y = element_blank(),
-          panel.grid.minor = element_blank()
-        ) +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
     }
   })
   
+  # CONTINENT CHART
   output$continent_plot_occ <- renderPlot({
     df <- occ_filtered()
     
-    # Handle missing or NA continents
     df_with_continent <- df %>%
       mutate(continent = ifelse(is.na(continent) | continent == "", "Unknown", continent))
     
     if (nrow(df_with_continent) == 0) {
       ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, 
-                 label = "No occurrence data", 
-                 size = 8, color = "#4a6b6b") +
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
         theme_void()
     } else {
-      # Count by continent and source
-      plot_data <- df_with_continent %>%
-        count(continent, source)
-      
-      # Calculate totals per continent for ordering and percentages
+      plot_data <- df_with_continent %>% count(continent, source)
       continent_totals <- plot_data %>%
         group_by(continent) %>%
         summarise(total = sum(n), .groups = "drop") %>%
-        mutate(
-          percentage = round(100 * total / sum(total), 1),
-          label = paste0(total, " (", percentage, "%)")
-        ) %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
         arrange(total)
-      
-      # Create factor ordered by count
       plot_data <- plot_data %>%
-        mutate(continent_factor = factor(continent, 
-                                         levels = continent_totals$continent))
-      
-      # Color palette for sources (same as epoch plot)
-      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+        mutate(continent_factor = factor(continent, levels = continent_totals$continent))
       
       ggplot(plot_data, aes(x = continent_factor, y = n, fill = source)) +
         geom_col(position = "stack") +
-        geom_text(
-          data = continent_totals %>% 
-            mutate(continent_factor = factor(continent, levels = continent_totals$continent)),
-          aes(x = continent_factor, y = total, label = label, fill = NULL),
-          hjust = -0.1, size = 3.5, fontface = "bold"
-        ) +
+        geom_text(data = continent_totals %>% mutate(continent_factor = factor(continent, levels = continent_totals$continent)),
+                  aes(x = continent_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
         scale_fill_manual(values = source_colors, name = "Source") +
         coord_flip() +
-        labs(
-          title = "Occurrences by continent",
-          subtitle = "Distribution of fossil occurrences across continents with source breakdown",
-          x = NULL,
-          y = "Number of occurrences"
-        ) +
+        labs(title = "Occurrences by continent",
+             subtitle = "Distribution of fossil occurrences across continents with source breakdown",
+             x = NULL, y = "Number of occurrences") +
         theme_minimal() +
-        theme(
-          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
-          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
-          axis.text = element_text(size = 11),
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          panel.grid.major.y = element_blank(),
-          panel.grid.minor = element_blank()
-        ) +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
     }
   })
   
-  output$order_plot_occ <- renderPlot({
-    df <- occ_filtered()
-    
-    # Handle missing or NA orders
-    df_with_order <- df %>%
-      mutate(order = ifelse(is.na(order) | order == "", "Unknown", order))
-    
-    if (nrow(df_with_order) == 0) {
-      ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, 
-                 label = "No occurrence data", 
-                 size = 8, color = "#4a6b6b") +
-        theme_void()
-    } else {
-      # Count by order and source
-      plot_data <- df_with_order %>%
-        count(order, source)
-      
-      # Calculate totals per order for ordering and percentages
-      order_totals <- plot_data %>%
-        group_by(order) %>%
-        summarise(total = sum(n), .groups = "drop") %>%
-        mutate(
-          percentage = round(100 * total / sum(total), 1),
-          label = paste0(total, " (", percentage, "%)")
-        ) %>%
-        arrange(total)
-      
-      # Create factor ordered by count
-      plot_data <- plot_data %>%
-        mutate(order_factor = factor(order, 
-                                     levels = order_totals$order))
-      
-      # Color palette for sources
-      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
-      
-      ggplot(plot_data, aes(x = order_factor, y = n, fill = source)) +
-        geom_col(position = "stack") +
-        geom_text(
-          data = order_totals %>% 
-            mutate(order_factor = factor(order, levels = order_totals$order)),
-          aes(x = order_factor, y = total, label = label, fill = NULL),
-          hjust = -0.1, size = 3.5, fontface = "bold"
-        ) +
-        scale_fill_manual(values = source_colors, name = "Source") +
-        coord_flip() +
-        labs(
-          title = "Occurrences by order",
-          subtitle = "Taxonomic distribution of fossil occurrences with source breakdown",
-          x = NULL,
-          y = "Number of occurrences"
-        ) +
-        theme_minimal() +
-        theme(
-          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
-          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
-          axis.text = element_text(size = 11),
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          panel.grid.major.y = element_blank(),
-          panel.grid.minor = element_blank()
-        ) +
-        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
-    }
-  })
-  
+  # PALEOOCEAN CHART
   output$paleoocean_plot_occ <- renderPlot({
     df <- occ_filtered()
     
-    # Handle missing or NA paleooceans
     df_with_paleoocean <- df %>%
       mutate(paleoocean = ifelse(is.na(paleoocean) | paleoocean == "", "Unknown", paleoocean))
     
     if (nrow(df_with_paleoocean) == 0) {
       ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, 
-                 label = "No occurrence data", 
-                 size = 8, color = "#4a6b6b") +
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
         theme_void()
     } else {
-      # Count by paleoocean and source
-      plot_data <- df_with_paleoocean %>%
-        count(paleoocean, source)
-      
-      # Calculate totals per paleoocean for ordering and percentages
+      plot_data <- df_with_paleoocean %>% count(paleoocean, source)
       paleoocean_totals <- plot_data %>%
         group_by(paleoocean) %>%
         summarise(total = sum(n), .groups = "drop") %>%
-        mutate(
-          percentage = round(100 * total / sum(total), 1),
-          label = paste0(total, " (", percentage, "%)")
-        ) %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
         arrange(total)
-      
-      # Create factor ordered by count
       plot_data <- plot_data %>%
-        mutate(paleoocean_factor = factor(paleoocean, 
-                                          levels = paleoocean_totals$paleoocean))
-      
-      # Color palette for sources
-      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+        mutate(paleoocean_factor = factor(paleoocean, levels = paleoocean_totals$paleoocean))
       
       ggplot(plot_data, aes(x = paleoocean_factor, y = n, fill = source)) +
         geom_col(position = "stack") +
-        geom_text(
-          data = paleoocean_totals %>% 
-            mutate(paleoocean_factor = factor(paleoocean, levels = paleoocean_totals$paleoocean)),
-          aes(x = paleoocean_factor, y = total, label = label, fill = NULL),
-          hjust = -0.1, size = 3.5, fontface = "bold"
-        ) +
+        geom_text(data = paleoocean_totals %>% mutate(paleoocean_factor = factor(paleoocean, levels = paleoocean_totals$paleoocean)),
+                  aes(x = paleoocean_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
         scale_fill_manual(values = source_colors, name = "Source") +
         coord_flip() +
-        labs(
-          title = "Occurrences by paleoocean",
-          subtitle = "Distribution of fossil occurrences across ancient ocean basins with source breakdown",
-          x = NULL,
-          y = "Number of occurrences"
-        ) +
+        labs(title = "Occurrences by paleoocean",
+             subtitle = "Distribution of fossil occurrences across ancient ocean basins with source breakdown",
+             x = NULL, y = "Number of occurrences") +
         theme_minimal() +
-        theme(
-          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
-          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
-          axis.text = element_text(size = 11),
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          panel.grid.major.y = element_blank(),
-          panel.grid.minor = element_blank()
-        ) +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
     }
   })
   
+  # ORDER CHART
+  output$order_plot_occ <- renderPlot({
+    df <- occ_filtered()
+    
+    df_with_order <- df %>%
+      mutate(order = ifelse(is.na(order) | order == "", "Unknown", order))
+    
+    if (nrow(df_with_order) == 0) {
+      ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
+        theme_void()
+    } else {
+      plot_data <- df_with_order %>% count(order, source)
+      order_totals <- plot_data %>%
+        group_by(order) %>%
+        summarise(total = sum(n), .groups = "drop") %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
+        arrange(total)
+      plot_data <- plot_data %>%
+        mutate(order_factor = factor(order, levels = order_totals$order))
+      
+      ggplot(plot_data, aes(x = order_factor, y = n, fill = source)) +
+        geom_col(position = "stack") +
+        geom_text(data = order_totals %>% mutate(order_factor = factor(order, levels = order_totals$order)),
+                  aes(x = order_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
+        scale_fill_manual(values = source_colors, name = "Source") +
+        coord_flip() +
+        labs(title = "Occurrences by order",
+             subtitle = "Taxonomic distribution of fossil occurrences with source breakdown",
+             x = NULL, y = "Number of occurrences") +
+        theme_minimal() +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
+    }
+  })
+  
+  # RANK CHART
   output$rank_plot_occ <- renderPlot({
     df <- occ_filtered()
     
-    # Handle missing or NA ranks, and group rare ranks into "Other"
     df_with_rank <- df %>%
       mutate(
         rank_grouped = case_when(
           is.na(rank) | rank == "" ~ "Unknown",
-          tolower(rank) == "species" ~ "Species",
-          tolower(rank) == "genus" ~ "Genus",
-          tolower(rank) == "family" ~ "Family",
-          tolower(rank) == "order" ~ "Order",
+          tolower(rank) %in% c("species", "genus", "family", "order") ~ tools::toTitleCase(tolower(rank)),
           TRUE ~ "Other"
         )
       )
     
     if (nrow(df_with_rank) == 0) {
       ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, 
-                 label = "No occurrence data", 
-                 size = 8, color = "#4a6b6b") +
+        annotate("text", x = 0.5, y = 0.5, label = "No occurrence data", size = 8, color = "#4a6b6b") +
         theme_void()
     } else {
-      # Count by rank and source
-      plot_data <- df_with_rank %>%
-        count(rank_grouped, source)
-      
-      # Calculate totals per rank for ordering and percentages
+      plot_data <- df_with_rank %>% count(rank_grouped, source)
       rank_totals <- plot_data %>%
         group_by(rank_grouped) %>%
         summarise(total = sum(n), .groups = "drop") %>%
-        mutate(
-          percentage = round(100 * total / sum(total), 1),
-          label = paste0(total, " (", percentage, "%)")
-        ) %>%
+        mutate(percentage = round(100 * total / sum(total), 1),
+               label = paste0(total, " (", percentage, "%)")) %>%
         arrange(total)
-      
-      # Create factor ordered by count
       plot_data <- plot_data %>%
-        mutate(rank_factor = factor(rank_grouped, 
-                                    levels = rank_totals$rank_grouped))
-      
-      # Color palette for sources
-      source_colors <- c("PBDB" = "#b56a9c", "Literature" = "#037c6e", "PBDB_U" = "#80c7ff")
+        mutate(rank_factor = factor(rank_grouped, levels = rank_totals$rank_grouped))
       
       ggplot(plot_data, aes(x = rank_factor, y = n, fill = source)) +
         geom_col(position = "stack") +
-        geom_text(
-          data = rank_totals %>% 
-            mutate(rank_factor = factor(rank_grouped, levels = rank_totals$rank_grouped)),
-          aes(x = rank_factor, y = total, label = label, fill = NULL),
-          hjust = -0.1, size = 3.5, fontface = "bold"
-        ) +
+        geom_text(data = rank_totals %>% mutate(rank_factor = factor(rank_grouped, levels = rank_totals$rank_grouped)),
+                  aes(x = rank_factor, y = total, label = label, fill = NULL), hjust = -0.1, size = 3.5, fontface = "bold") +
         scale_fill_manual(values = source_colors, name = "Source") +
         coord_flip() +
-        labs(
-          title = "Occurrences by taxonomic rank",
-          subtitle = "Distribution by identification precision (species, genus, family, order, and other)",
-          x = NULL,
-          y = "Number of occurrences"
-        ) +
+        labs(title = "Occurrences by taxonomic rank",
+             subtitle = "Distribution by identification precision (species, genus, family, order, and other)",
+             x = NULL, y = "Number of occurrences") +
         theme_minimal() +
-        theme(
-          plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
-          plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
-          axis.text = element_text(size = 11),
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          panel.grid.major.y = element_blank(),
-          panel.grid.minor = element_blank()
-        ) +
+        theme(plot.title = element_text(face = "bold", size = 14, color = "#4a6b6b"),
+              plot.subtitle = element_text(size = 10, color = "#666666", margin = margin(b = 15)),
+              axis.text = element_text(size = 11), legend.position = "bottom",
+              legend.title = element_text(face = "bold"),
+              panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.2)))
     }
   })
+  
   # ----- Collections tab -----
   
   # Select All / Clear All observers for Collections filters
