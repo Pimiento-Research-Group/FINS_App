@@ -1566,7 +1566,7 @@ server <- function(input, output, session) {
       return(out)
     }
     
-    # Columns to populate from collections
+    # Columns to populate from collections (using collection column names)
     cols_from_collections <- c(
       "max_ma", "min_ma", "age_range",
       "early_interval", "late_interval",
@@ -1577,7 +1577,8 @@ server <- function(input, output, session) {
       "latitude", "longitude",
       "continent", "latitude_band",
       "paleoocean",
-      "paleolatitude", "paleolongitude"
+      "paleolatitude", "paleolongitude",
+      "locality_id"
     )
     
     # Keep only columns that exist in collections
@@ -1615,7 +1616,21 @@ server <- function(input, output, session) {
       }
     }
     
-    # Add marker columns to show which values came from collections
+    # Rename columns to match occurrence schema
+    if ("time_interval_type" %in% names(out_enriched)) {
+      out_enriched$int_type <- out_enriched$time_interval_type
+      out_enriched$time_interval_type <- NULL
+    }
+    if ("paleolatitude" %in% names(out_enriched)) {
+      out_enriched$paleolat <- out_enriched$paleolatitude
+      out_enriched$paleolatitude <- NULL
+    }
+    if ("paleolongitude" %in% names(out_enriched)) {
+      out_enriched$paleolon <- out_enriched$paleolongitude
+      out_enriched$paleolongitude <- NULL
+    }
+    
+    # Add marker column to show which values came from collections
     out_enriched$m_enriched_from_col <- out_enriched$coll_id %in% col_for_join$coll_id
     
     # Count successful joins
