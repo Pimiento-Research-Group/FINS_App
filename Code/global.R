@@ -586,28 +586,10 @@ classify_interval_type <- function(label) {
   NA_character_
 }
 
-# ---------- Load datasets (prefer *_norm if present) ----------
-path_occ  <- if (file.exists(here::here("data", "Data_S2_norm.csv"))) {
-  here::here("data", "Data_S2_norm.csv")
-} else {
-  here::here("data", "Data_S2.csv")
-}
-
-path_col  <- if (file.exists(here::here("data", "Data_S1_norm.csv"))) {
-  here::here("data", "Data_S1_norm.csv")
-} else {
-  here::here("data", "Data_S1.csv")
-}
-
-path_refs <- if (file.exists(here::here("data", "Data_S3_norm.csv"))) {
-  here::here("data", "Data_S3_norm.csv")
-} else {
-  here::here("data", "Data_S3.csv")
-}
-
-occ  <- read_csv(path_occ,  show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
-col  <- read_csv(path_col,  show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
-refs <- read_csv(path_refs, show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+# ---------- Load datasets ----------
+col  <- read_csv(here::here("data", "Data_S1.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+occ  <- read_csv(here::here("data", "Data_S2.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+refs <- read_csv(here::here("data", "Data_S3.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 
 # ---------- Load Taxonomy Lookup ----------
 taxonomy_lookup <- readxl::read_excel(
