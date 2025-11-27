@@ -15,6 +15,7 @@ library(digest)
 library(here)
 library(shinyBS)
 library(forcats)
+library(readxl)
 
 # ---------- Options ----------
 options(shiny.maxRequestSize = 50 * 1024^2)  # allow up to 50MB uploads
@@ -607,6 +608,149 @@ path_refs <- if (file.exists(here::here("data", "Data_S3_norm.csv"))) {
 occ  <- read_csv(path_occ,  show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 col  <- read_csv(path_col,  show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 refs <- read_csv(path_refs, show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+
+# ---------- Load Taxonomy Lookup ----------
+taxonomy_lookup <- readxl::read_excel(
+  here::here("data", "Lookup_Taxonomy_version.30.3.xlsx")
+) %>%
+  select(Superorder, Order, Family, Genus, 
+         starts_with("Synonym.")) %>%
+  filter(!is.na(Genus))
+
+# Build a lookup table: genus/synonym -> canonical genus with taxonomy
+build_taxonomy_map <- function(lookup_df) {
+  map <- list()
+  
+  for (i in seq_len(nrow(lookup_df))) {
+    row <- lookup_df[i, ]
+    canonical <- row$Genus
+    info <- list(
+      genus = canonical,
+      family = row$Family,
+      order = row$Order,
+      superorder = row$Superorder
+    )
+    
+    # Add canonical genus
+    map[[tolower(canonical)]] <- info
+    
+    # Add synonyms
+    for (syn_col in c("Synonym.1", "Synonym.2", "Synonym.3", "Synonym.4", "Synonym.5")) {
+      syn <- row[[syn_col]]
+      if (!is.na(syn) && syn != "") {
+        map[[tolower(syn)]] <- info
+      }
+    }
+  }
+  map
+}
+
+taxonomy_map <- build_taxonomy_map(taxonomy_lookup)
+
+# Function to clean identified_name and extract genus
+clean_identified_name <- function(name) {
+  if (is.na(name) || name == "") return(list(modified = NA, genus_extracted = NA))
+  
+  original <- name
+  
+  # Remove quotes
+  name <- gsub('"', '', name)
+  
+  # Remove leading qualifiers like "n. gen.", "cf.", etc.
+  name <- gsub("^\\s*n\\.\\s*gen\\.\\s*", "", name, ignore.case = TRUE)
+  name <- gsub("^\\s*cf\\.\\s*", "", name, ignore.case = TRUE)
+  name <- gsub("^\\s*aff\\.\\s*", "", name, ignore.case = TRUE)
+  
+  # Remove trailing/inline qualifiers
+  name <- gsub("\\s+n\\.\\s*sp\\..*$", "", name, ignore.case = TRUE)
+  name <- gsub("\\s+n\\.\\s*gen\\..*$", "", name, ignore.case = TRUE)
+  name <- gsub("\\s+cf\\.\\s+", " ", name, ignore.case = TRUE)
+  name <- gsub("\\s+aff\\.\\s+", " ", name, ignore.case = TRUE)
+  name <- gsub("\\s+sp\\.\\s*\\d*$", "", name, ignore.case = TRUE)
+  name <- gsub("\\s+sp\\.$", "", name, ignore.case = TRUE)
+  name <- gsub("\\s+indet\\.?$", "", name, ignore.case = TRUE)
+  name <- gsub("\\s*\\?\\s*", " ", name)
+  name <- gsub("\\s*\\(.*?\\)\\s*", " ", name)  # Remove parenthetical content
+  name <- gsub("\\s+\\d+$", "", name)  # Remove trailing numbers
+  name <- gsub("\\s+(non vu|R)$", "", name, ignore.case = TRUE)
+  
+  # Clean up whitespace
+  
+  name <- trimws(gsub("\\s+", " ", name))
+  
+  # Extract genus (first word)
+  words <- strsplit(name, "\\s+")[[1]]
+  genus_extracted <- if (length(words) > 0) words[1] else NA
+  
+  # Modified name is the cleaned version
+  modified <- if (nchar(name) > 0) name else NA
+  
+  list(modified = modified, genus_extracted = genus_extracted)
+}
+
+# Function to look up taxonomy for a genus
+lookup_taxonomy <- function(genus) {
+  if (is.na(genus) || genus == "") {
+    return(list(accepted_genus = NA, family = NA, order = NA, superorder = NA, matched = FALSE))
+  }
+  
+  key <- tolower(trimws(genus))
+  
+  if (key %in% names(taxonomy_map)) {
+    info <- taxonomy_map[[key]]
+    return(list(
+      accepted_genus = info$genus,
+      family = info$family,
+      order = info$order,
+      superorder = info$superorder,
+      matched = TRUE
+    ))
+  }
+  
+  list(accepted_genus = NA, family = NA, order = NA, superorder = NA, matched = FALSE)
+}
+
+# Vectorized function to process all names
+process_taxonomy_batch <- function(identified_names) {
+  n <- length(identified_names)
+  
+  result <- data.frame(
+    modified_identified_name = character(n),
+    accepted_name = character(n),
+    genus = character(n),
+    family = character(n),
+    order = character(n),
+    superorder = character(n),
+    stringsAsFactors = FALSE
+  )
+  
+  for (i in seq_len(n)) {
+    cleaned <- clean_identified_name(identified_names[i])
+    tax <- lookup_taxonomy(cleaned$genus_extracted)
+    
+    result$modified_identified_name[i] <- cleaned$modified %||% NA_character_
+    result$genus[i] <- tax$accepted_genus %||% cleaned$genus_extracted %||% NA_character_
+    result$family[i] <- tax$family %||% NA_character_
+    result$order[i] <- tax$order %||% NA_character_
+    result$superorder[i] <- tax$superorder %||% NA_character_
+    
+    # accepted_name: use modified name with accepted genus if found
+    if (!is.na(tax$accepted_genus) && !is.na(cleaned$modified)) {
+      # Replace original genus with accepted genus in the modified name
+      words <- strsplit(cleaned$modified, "\\s+")[[1]]
+      if (length(words) > 0) {
+        words[1] <- tax$accepted_genus
+        result$accepted_name[i] <- paste(words, collapse = " ")
+      } else {
+        result$accepted_name[i] <- tax$accepted_genus
+      }
+    } else {
+      result$accepted_name[i] <- cleaned$modified %||% NA_character_
+    }
+  }
+  
+  result
+}
 
 # Ensure reference fields exist
 if (!has_col(occ,  "reference_key"))  occ$reference_key  <- NA_character_

@@ -150,6 +150,18 @@ server <- function(input, output, session) {
       reference         = df[["ref_author"]]
     )
     
+    # Process taxonomy from identified_name
+    if ("identified_name" %in% names(out) && exists("process_taxonomy_batch")) {
+      tax_result <- process_taxonomy_batch(out$identified_name)
+      
+      out$modified_identified_name <- tax_result$modified_identified_name
+      out$accepted_name <- tax_result$accepted_name
+      out$genus <- tax_result$genus
+      out$family <- tax_result$family
+      out$order <- tax_result$order
+      out$superorder <- tax_result$superorder
+    }
+    
     if (!keep_only_needed) {
       extras <- df[, setdiff(names(df), names(out)), drop = FALSE]
       extras <- tibble::as_tibble(lapply(extras, function(x) if (is.list(x)) sapply(x, as.character) else x))
