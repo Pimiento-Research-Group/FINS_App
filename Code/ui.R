@@ -136,6 +136,16 @@ ui <- tagList(
                fluidRow(
                  column(4, wellPanel(
                    h4("About"),
+                   # Institutional logos at bottom
+                   tags$div(
+                     style = "margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center;",
+                     tags$p("Supported by", style = "color: #666; font-size: 12px; margin-bottom: 15px;"),
+                     tags$div(
+                       style = "display: flex; justify-content: center; align-items: center; gap: 40px;",
+                       tags$img(src = "branding/uzh-logo-black.png", height = "50px", alt = "University of Zurich"),
+                       tags$img(src = "branding/SNF_logo_standard_office_color_pos_e.png", height = "50px", alt = "Swiss National Science Foundation")
+                     )
+                   ),
                    uiOutput("readme_ui_about")
                  )),
                  column(4, wellPanel(
