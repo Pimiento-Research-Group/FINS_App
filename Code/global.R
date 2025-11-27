@@ -596,7 +596,8 @@ refs <- read_csv(here::here("data", "Data_S3.csv"), show_col_types = FALSE, prog
 
 # ---------- Load Taxonomy Lookup ----------
 taxonomy_lookup <- readxl::read_excel(
-  here::here("data", "Lookup_Taxonomy_version.30.3.xlsx")
+  here::here("data", "Lookup_Taxonomy_version.30.3.xlsx"),
+  .name_repair = "minimal"
 ) %>%
   select(Superorder, Order, Family, Genus, 
          starts_with("Synonym.")) %>%
