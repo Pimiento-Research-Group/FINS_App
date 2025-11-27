@@ -1032,7 +1032,7 @@ server <- function(input, output, session) {
           "North America" = "#1D6996",
           "South America" = "#5F4690",
           "Oceania" = "#CC503E",
-          "Ocean" = "#94346E",
+          "Offshore samples" = "#94346E",
           "Antarctica" = "#E17C05",
           "Unknown" = "#7f8c8d"
         )
