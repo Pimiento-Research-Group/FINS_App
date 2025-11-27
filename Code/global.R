@@ -17,6 +17,9 @@ library(shinyBS)
 library(forcats)
 library(readxl)
 
+# Make branding folder available for logos
+shiny::addResourcePath("branding", here::here("branding"))
+
 # ---------- Options ----------
 options(shiny.maxRequestSize = 50 * 1024^2)  # allow up to 50MB uploads
 

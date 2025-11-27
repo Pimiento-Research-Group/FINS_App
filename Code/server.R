@@ -2,9 +2,6 @@
 
 server <- function(input, output, session) {
   
-  # Make logo available to the app
-  addResourcePath("branding", here::here("branding"))
-  
   # Use rv$occ / rv$col / rv$refs everywhere instead of raw occ/col/refs
   rv <- reactiveValues(occ = occ, col = col, refs = refs)
   
@@ -173,7 +170,7 @@ server <- function(input, output, session) {
   
   # ---- Welcome tab ----
   output$readme_ui_about <- renderUI({
-    readme_path <- here::here("data", "README_about.md")
+    readme_path <- here::here("data", "ReadMe_about.md")
     if (file.exists(readme_path)) {
       # Read the markdown file
       content <- paste(readLines(readme_path, warn = FALSE), collapse = "\n")
@@ -208,7 +205,7 @@ server <- function(input, output, session) {
   })
   
   output$readme_ui_guide <- renderUI({
-    readme_path <- here::here("data", "README_guide.md")
+    readme_path <- here::here("data", "ReadMe_guide.md")
     if (file.exists(readme_path)) {
       # Read and display the guide as-is
       HTML(markdown::markdownToHTML(readme_path, fragment.only = TRUE))
