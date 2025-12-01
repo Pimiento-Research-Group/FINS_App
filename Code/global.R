@@ -604,6 +604,30 @@ taxonomy_lookup <- readxl::read_excel(
          starts_with("Synonym.")) %>%
   filter(!is.na(Genus))
 
+# ---------- Load Extant Taxa Lookup ----------
+extant_species <- readxl::read_excel(
+  here::here("data", "extant_taxa.xlsx"),
+  sheet = "Species",
+  .name_repair = "minimal"
+)
+
+extant_genera <- readxl::read_excel(
+  here::here("data", "extant_taxa.xlsx"),
+  sheet = "Genus",
+  .name_repair = "minimal"
+)
+
+extant_families <- readxl::read_excel(
+  here::here("data", "extant_taxa.xlsx"),
+  sheet = "Family",
+  .name_repair = "minimal"
+)
+
+# Create lowercase lookup vectors for matching
+extant_species_list <- tolower(trimws(extant_species[[1]]))  # Assuming species names in first column
+extant_genera_list <- tolower(trimws(extant_genera[[1]]))    # Assuming genus names in first column
+extant_families_list <- tolower(trimws(extant_families[[1]])) # Assuming family names in first column
+
 # Build a lookup table: genus/synonym -> canonical genus with taxonomy
 build_taxonomy_map <- function(lookup_df) {
   map <- list()
@@ -708,8 +732,19 @@ process_taxonomy_batch <- function(identified_names) {
     family = character(n),
     order = character(n),
     superorder = character(n),
+    rank = character(n),
+    status = character(n),
+    genus_status = character(n),
     stringsAsFactors = FALSE
   )
+  
+  # Define known higher taxa
+  superorder_names <- c("Batoidea", "Galeomorphii", "Squalomorphii")
+  clade_names <- c("Selachii")
+  subcohort_names <- c("Neoselachii")
+  
+  # Extinct order
+  extinct_orders <- c("Synechodontiformes")
   
   for (i in seq_len(n)) {
     cleaned <- clean_identified_name(identified_names[i])
@@ -721,9 +756,8 @@ process_taxonomy_batch <- function(identified_names) {
     result$order[i] <- tax$order %||% "Unknown"
     result$superorder[i] <- tax$superorder %||% "Unknown"
     
-    # accepted_name: use modified name with accepted genus if found
+    # Determine accepted_name
     if (!is.na(tax$accepted_genus) && !is.na(cleaned$modified)) {
-      # Replace original genus with accepted genus in the modified name
       words <- strsplit(cleaned$modified, "\\s+")[[1]]
       if (length(words) > 0) {
         words[1] <- tax$accepted_genus
@@ -734,11 +768,110 @@ process_taxonomy_batch <- function(identified_names) {
     } else {
       result$accepted_name[i] <- cleaned$modified %||% NA_character_
     }
+    
+    # Determine rank based on accepted_name
+    name_to_check <- result$accepted_name[i]
+    if (is.na(name_to_check) || name_to_check == "") {
+      result$rank[i] <- "UNKNOWN"
+    } else {
+      words <- strsplit(trimws(name_to_check), "\\s+")[[1]]
+      word_count <- length(words)
+      first_word <- if (word_count > 0) words[1] else ""
+      has_sp <- any(grepl("^sp\\.?$", words, ignore.case = TRUE))
+      
+      if (word_count >= 2 && !has_sp) {
+        result$rank[i] <- "species"
+      } else if (word_count >= 2 && has_sp) {
+        result$rank[i] <- "genus"
+      } else if (word_count == 1) {
+        if (first_word %in% subcohort_names) {
+          result$rank[i] <- "subcohort"
+        } else if (first_word %in% clade_names) {
+          result$rank[i] <- "clade"
+        } else if (first_word %in% superorder_names) {
+          result$rank[i] <- "superorder"
+        } else if (grepl("formes$", first_word, ignore.case = TRUE)) {
+          result$rank[i] <- "order"
+        } else if (grepl("dae$", first_word, ignore.case = TRUE)) {
+          result$rank[i] <- "family"
+        } else {
+          result$rank[i] <- "genus"
+        }
+      } else {
+        result$rank[i] <- "UNKNOWN"
+      }
+    }
+    
+    # Determine status and genus_status based on rank and extant lists
+    current_rank <- result$rank[i]
+    accepted_name_lower <- tolower(trimws(result$accepted_name[i] %||% ""))
+    genus_lower <- tolower(trimws(result$genus[i] %||% ""))
+    family_lower <- tolower(trimws(result$family[i] %||% ""))
+    order_name <- result$order[i] %||% ""
+    
+    if (current_rank == "species") {
+      # Check species against extant_species_list
+      if (accepted_name_lower %in% extant_species_list) {
+        result$status[i] <- "extant"
+      } else {
+        result$status[i] <- "extinct"
+      }
+      # Check genus for genus_status
+      if (genus_lower %in% extant_genera_list) {
+        result$genus_status[i] <- "extant"
+      } else {
+        result$genus_status[i] <- "extinct"
+      }
+      
+    } else if (current_rank == "genus") {
+      # Check genus against extant_genera_list
+      if (genus_lower %in% extant_genera_list) {
+        result$status[i] <- "extant"
+      } else {
+        result$status[i] <- "extinct"
+      }
+      # genus_status same as status for genus-level
+      if (genus_lower %in% extant_genera_list) {
+        result$genus_status[i] <- "extant"
+      } else {
+        result$genus_status[i] <- "extinct"
+      }
+      
+    } else if (current_rank == "family") {
+      # Check family against extant_families_list
+      if (family_lower %in% extant_families_list) {
+        result$status[i] <- "extant"
+      } else {
+        result$status[i] <- "extinct"
+      }
+      # genus_status is NA for family-level
+      result$genus_status[i] <- "NA"
+      
+    } else if (current_rank == "order") {
+      # All orders extant except Synechodontiformes
+      if (order_name %in% extinct_orders) {
+        result$status[i] <- "extinct"
+      } else {
+        result$status[i] <- "extant"
+      }
+      # genus_status is NA for order-level
+      result$genus_status[i] <- "NA"
+      
+    } else if (current_rank %in% c("superorder", "clade", "subcohort")) {
+      # All superorders/clades/subcohorts are extant
+      result$status[i] <- "extant"
+      # genus_status is NA
+      result$genus_status[i] <- "NA"
+      
+    } else {
+      # UNKNOWN rank
+      result$status[i] <- "UNKNOWN"
+      result$genus_status[i] <- "NA"
+    }
   }
   
   result
 }
-
 # Ensure reference fields exist
 if (!has_col(occ,  "reference_key"))  occ$reference_key  <- NA_character_
 if (!has_col(col,  "reference_key"))  col$reference_key  <- NA_character_

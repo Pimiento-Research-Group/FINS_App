@@ -148,7 +148,6 @@ server <- function(input, output, session) {
     )
     
     # Process taxonomy from identified_name
-    # Process taxonomy from identified_name
     if ("identified_name" %in% names(out) && exists("process_taxonomy_batch")) {
       tax_result <- process_taxonomy_batch(out$identified_name)
       
@@ -158,14 +157,20 @@ server <- function(input, output, session) {
       out$family <- tax_result$family
       out$order <- tax_result$order
       out$superorder <- tax_result$superorder
+      out$rank <- tax_result$rank
+      out$status <- tax_result$status
+      out$genus_status <- tax_result$genus_status
       
       # Add marker columns for highlighting
-      out$m_modified_identified_name <- !is.na(tax_result$modified_identified_name)
-      out$m_accepted_name <- !is.na(tax_result$accepted_name)
-      out$m_genus <- !is.na(tax_result$genus)
-      out$m_family <- !is.na(tax_result$family)
-      out$m_order <- !is.na(tax_result$order)
-      out$m_superorder <- !is.na(tax_result$superorder)
+      out$m_modified_identified_name <- !is.na(tax_result$modified_identified_name) & tax_result$modified_identified_name != ""
+      out$m_accepted_name <- !is.na(tax_result$accepted_name) & tax_result$accepted_name != ""
+      out$m_genus <- !is.na(tax_result$genus) & tax_result$genus != "" & tax_result$genus != "Unknown"
+      out$m_family <- !is.na(tax_result$family) & tax_result$family != "" & tax_result$family != "Unknown"
+      out$m_order <- !is.na(tax_result$order) & tax_result$order != "" & tax_result$order != "Unknown"
+      out$m_superorder <- !is.na(tax_result$superorder) & tax_result$superorder != "" & tax_result$superorder != "Unknown"
+      out$m_rank <- !is.na(tax_result$rank) & tax_result$rank != "" & tax_result$rank != "UNKNOWN"
+      out$m_status <- !is.na(tax_result$status) & tax_result$status != ""
+      out$m_genus_status <- !is.na(tax_result$genus_status) & tax_result$genus_status != ""
     }
     
     if (!keep_only_needed) {
@@ -1740,6 +1745,9 @@ server <- function(input, output, session) {
     color_cell("family", "m_family")
     color_cell("order", "m_order")
     color_cell("superorder", "m_superorder")
+    color_cell("rank", "m_rank")
+    color_cell("status", "m_status")
+    color_cell("genus_status", "m_genus_status")
     
     dt
   })
