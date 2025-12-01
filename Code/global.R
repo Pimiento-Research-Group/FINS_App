@@ -716,10 +716,10 @@ process_taxonomy_batch <- function(identified_names) {
     tax <- lookup_taxonomy(cleaned$genus_extracted)
     
     result$modified_identified_name[i] <- cleaned$modified %||% NA_character_
-    result$genus[i] <- tax$accepted_genus %||% cleaned$genus_extracted %||% NA_character_
-    result$family[i] <- tax$family %||% NA_character_
-    result$order[i] <- tax$order %||% NA_character_
-    result$superorder[i] <- tax$superorder %||% NA_character_
+    result$genus[i] <- tax$accepted_genus %||% cleaned$genus_extracted %||% "Unknown"
+    result$family[i] <- tax$family %||% "Unknown"
+    result$order[i] <- tax$order %||% "Unknown"
+    result$superorder[i] <- tax$superorder %||% "Unknown"
     
     # accepted_name: use modified name with accepted genus if found
     if (!is.na(tax$accepted_genus) && !is.na(cleaned$modified)) {
