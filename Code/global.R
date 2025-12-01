@@ -592,6 +592,7 @@ classify_interval_type <- function(label) {
 # ---------- Load datasets ----------
 col  <- read_csv(here::here("data", "Data_S1.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 occ  <- read_csv(here::here("data", "Data_S2.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+occ_original_cols <- names(occ)  # Store original column names before processing
 refs <- read_csv(here::here("data", "Data_S3.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 
 # ---------- Load Taxonomy Lookup ----------

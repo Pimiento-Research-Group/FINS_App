@@ -134,8 +134,8 @@ server <- function(input, output, session) {
     
     out <- tibble::tibble(
       occurrence_number = occurrence_number,
+      collection_no     = coll_id,
       coll_id           = coll_id,
-      collection_number     = coll_id,
       identified_name   = df[["identified_name"]],
       genus             = df[["genus"]],
       family            = df[["family"]],
@@ -148,6 +148,7 @@ server <- function(input, output, session) {
     )
     
     # Process taxonomy from identified_name
+    # Process taxonomy from identified_name
     if ("identified_name" %in% names(out) && exists("process_taxonomy_batch")) {
       tax_result <- process_taxonomy_batch(out$identified_name)
       
@@ -157,6 +158,14 @@ server <- function(input, output, session) {
       out$family <- tax_result$family
       out$order <- tax_result$order
       out$superorder <- tax_result$superorder
+      
+      # Add marker columns for highlighting
+      out$m_modified_identified_name <- !is.na(tax_result$modified_identified_name)
+      out$m_accepted_name <- !is.na(tax_result$accepted_name)
+      out$m_genus <- !is.na(tax_result$genus)
+      out$m_family <- !is.na(tax_result$family)
+      out$m_order <- !is.na(tax_result$order)
+      out$m_superorder <- !is.na(tax_result$superorder)
     }
     
     if (!keep_only_needed) {
@@ -1665,7 +1674,11 @@ server <- function(input, output, session) {
   })
   
   pbdb_occ_aligned <- reactive({
-    align_to_template(pbdb_occ_processed(), rv$occ)
+    df <- align_to_template(pbdb_occ_processed(), rv$occ)
+    # Keep only columns that exist in the original FINS schema (plus marker columns)
+    marker_cols <- grep("^m_", names(df), value = TRUE)
+    keep_cols <- intersect(names(df), c(occ_original_cols, marker_cols))
+    df[, keep_cols, drop = FALSE]
   })
   
   output$pbdb_occ_preview <- renderDT({
@@ -1686,7 +1699,7 @@ server <- function(input, output, session) {
       rownames = FALSE
     )
     
-    # Highlight enriched cells in light blue
+    # Highlight enriched cells in light blue (from collections)
     if ("m_enriched_from_col" %in% names(show)) {
       tint <- "#e6f3ff"
       
@@ -1704,6 +1717,26 @@ server <- function(input, output, session) {
         )
       }
     }
+    
+    # Highlight taxonomy columns populated by the pipeline
+    tint <- "#e6f3ff"
+    
+    color_cell <- function(col, mask) {
+      if (col %in% names(show) && mask %in% names(show)) {
+        dt <<- dt %>% DT::formatStyle(
+          columns = col,
+          valueColumns = mask,
+          backgroundColor = DT::styleEqual(c(TRUE, FALSE), c(tint, NA))
+        )
+      }
+    }
+    
+    color_cell("modified_identified_name", "m_modified_identified_name")
+    color_cell("accepted_name", "m_accepted_name")
+    color_cell("genus", "m_genus")
+    color_cell("family", "m_family")
+    color_cell("order", "m_order")
+    color_cell("superorder", "m_superorder")
     
     dt
   })
