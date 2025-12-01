@@ -476,7 +476,7 @@ ui <- tagList(
                    selected = NULL
                  ),
                  radioButtons("pbdb_col_mode", "Apply to Collections:",
-                              choices = c("Preview only" = "preview", "Append to current" = "append", "Replace current" = "replace"),
+                              choices = c("Preview only" = "preview", "Append to FINS" = "append"),
                               selected = "preview"),
                  actionButton("pbdb_col_apply", "Apply Collections", class = "btn-primary"),
                  tags$hr(),
@@ -493,7 +493,7 @@ ui <- tagList(
                  fileInput("pbdb_occ_file", "Choose PBDB Occurrences CSV",
                            accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
                  radioButtons("pbdb_occ_mode", "Apply to Occurrences:",
-                              choices = c("Preview only" = "preview", "Append to current" = "append", "Replace current" = "replace"),
+                              choices = c("Preview only" = "preview", "Append to FINS" = "append"),
                               selected = "preview"),
                  actionButton("pbdb_occ_apply", "Apply Occurrences", class = "btn-primary")
                ),
