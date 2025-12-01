@@ -1678,6 +1678,9 @@ server <- function(input, output, session) {
     # Keep only columns that exist in the original FINS schema (plus marker columns)
     marker_cols <- grep("^m_", names(df), value = TRUE)
     keep_cols <- intersect(names(df), c(occ_original_cols, marker_cols))
+    # Exclude derived columns that shouldn't appear in preview
+    exclude_cols <- c("reference_display", "reference_key")
+    keep_cols <- setdiff(keep_cols, exclude_cols)
     df[, keep_cols, drop = FALSE]
   })
   
