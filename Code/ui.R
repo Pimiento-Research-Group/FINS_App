@@ -169,6 +169,15 @@ ui <- tagList(
                           "By default, all data is shown. Use filters below to narrow down the dataset. Empty filters = no restriction.")
                  ),
                  
+                 # Taxonomy source selector at the top
+                 div(
+                   style = "background-color: #fff8e6; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #f0c36d;",
+                   radioButtons("taxonomy_source_occ", "Taxonomy list:",
+                                choices = c("Use FINS taxonomy" = "fins"),
+                                selected = "fins"),
+                   uiOutput("taxonomy_source_warning")
+                 ),
+                 
                  # Collapsible panels
                  bsCollapse(id = "collapse_occ", open = "panel_time_occ", multiple = TRUE,
                             
@@ -255,12 +264,6 @@ ui <- tagList(
                             bsCollapsePanel("Curation & Source",
                                             style = "default",
                                             value = "panel_curation_occ",
-                                            
-                                            radioButtons("taxonomy_source_occ", "Taxonomy list:",
-                                                         choices = c("Use FINS taxonomy" = "fins"),
-                                                         selected = "fins"),
-                                            uiOutput("taxonomy_source_warning"),
-                                            tags$hr(),
                                             
                                             radioButtons("name_mode_occ", "Name display:",
                                                          choices = c("Curated (accepted_name)"="cur","As provided (identified_name)"="raw"),
@@ -452,52 +455,50 @@ ui <- tagList(
     tabPanel("Add data",
              sidebarLayout(
                sidebarPanel(
-                 # Alternative taxonomy upload section
-                 h4("Upload alternative taxonomic list"),
-                 tags$div(
-                   class = "alert alert-info",
-                   style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
-                   tags$strong("ℹ️ Optional: "),
-                   "If you wish to use an alternative taxonomic list instead of the default FINS taxonomy, upload it here before uploading occurrences. The file must have the same structure as the FINS taxonomy (Superorder, Order, Family, Genus, Synonym columns)."
-                 ),
-                 fileInput("alt_taxonomy_file", "Choose taxonomy file (.xlsx or .csv)",
-                           accept = c(".xlsx", ".csv", "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
-                 uiOutput("alt_taxonomy_status"),
-                 tags$hr(),
                  h4("Upload PBDB Collections"),
-                 fileInput("pbdb_col_file", "Choose PBDB Collections CSV",
-                           accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
-                 checkboxGroupInput(
-                   "pbdb_col_paleo",
-                   "Paleocoordinate and paleoocean addition",
-                   choices = c(
-                     "Compute paleocoordinates (30 replicates)" = "compute",
-                     "Assign paleooceans (Compute paleocoordinates first!)" = "ocean"
-                   ),
-                   selected = NULL
-                 ),
-                 radioButtons("pbdb_col_mode", "Apply to Collections:",
-                              choices = c("Preview only" = "preview", "Append to FINS" = "append"),
-                              selected = "preview"),
-                 actionButton("pbdb_col_apply", "Apply Collections", class = "btn-primary"),
-                 tags$hr(),
-                 
-                 tags$hr(),
-                 
-                 h4("Upload PBDB Occurrences"),
-                 tags$div(
-                   class = "alert alert-warning",
-                   style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
-                   tags$strong("⚠️ Important: "),
-                   "Before uploading occurrences, make sure you upload collections first. Occurrence data will be enriched with geographic and temporal information from matching collections."
-                 ),
-                 fileInput("pbdb_occ_file", "Choose PBDB Occurrences CSV",
-                           accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
-                 radioButtons("pbdb_occ_mode", "Apply to Occurrences:",
-                              choices = c("Preview only" = "preview", "Append to FINS" = "append"),
-                              selected = "preview"),
-                 actionButton("pbdb_occ_apply", "Apply Occurrences", class = "btn-primary")
-               ),
+      fileInput("pbdb_col_file", "Choose PBDB Collections CSV",
+                accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
+      checkboxGroupInput(
+        "pbdb_col_paleo",
+        "Paleocoordinate and paleoocean addition",
+        choices = c(
+          "Compute paleocoordinates (30 replicates)" = "compute",
+          "Assign paleooceans (Compute paleocoordinates first!)" = "ocean"
+        ),
+        selected = NULL
+      ),
+      radioButtons("pbdb_col_mode", "Apply to Collections:",
+                   choices = c("Preview only" = "preview", "Append to FINS" = "append"),
+                   selected = "preview"),
+      actionButton("pbdb_col_apply", "Apply Collections", class = "btn-primary"),
+      tags$hr(),
+      
+      h4("Upload PBDB Occurrences"),
+      tags$div(
+        class = "alert alert-warning",
+        style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
+        tags$strong("⚠️ Important: "),
+        "Before uploading occurrences, make sure you upload collections first. Occurrence data will be enriched with geographic and temporal information from matching collections."
+      ),
+      fileInput("pbdb_occ_file", "Choose PBDB Occurrences CSV",
+                accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),
+      radioButtons("pbdb_occ_mode", "Apply to Occurrences:",
+                   choices = c("Preview only" = "preview", "Append to FINS" = "append"),
+                   selected = "preview"),
+      actionButton("pbdb_occ_apply", "Apply Occurrences", class = "btn-primary"),
+      tags$hr(),
+      
+      h4("Upload alternative taxonomic list"),
+      tags$div(
+        class = "alert alert-info",
+        style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
+        tags$strong("ℹ️ Optional: "),
+        "Upload an alternative taxonomic list to use instead of the default FINS taxonomy. The file must have columns: Superorder, Order, Family, Genus (and optionally Synonym.1, Synonym.2, etc.). Once uploaded, you can switch between taxonomies in the Occurrences tab under 'Curation & Source'."
+      ),
+      fileInput("alt_taxonomy_file", "Choose taxonomy file (.xlsx or .csv)",
+                accept = c(".xlsx", ".csv", "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+      uiOutput("alt_taxonomy_status")
+    ),
                mainPanel(
                  tabsetPanel(
                    tabPanel("Collections preview",
