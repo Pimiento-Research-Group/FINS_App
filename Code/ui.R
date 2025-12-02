@@ -142,14 +142,16 @@ ui <- tagList(
                    uiOutput("readme_ui_guide")
                  )),
                  column(4, wellPanel(
+                   h4("How to cite & Contact"),
+                   tags$div(
+                     style = "color: #888; font-style: italic; padding: 20px 0;",
+                     p("Content hidden during peer review.")
+                   ),
+                   tags$hr(),
                    h4("Supported by"),
                    tags$div(
-                     style = "margin-top: 20px; text-align: center;",
-                     tags$div(
-                       style = "display: flex; justify-content: center; align-items: center; gap: 40px;",
-                       tags$img(src = "branding/uzh-logo-black.png", height = "50px", alt = "University of Zurich"),
-                       tags$img(src = "branding/SNF_logo_standard_office_color_pos_e.png", height = "50px", alt = "Swiss National Science Foundation")
-                     )
+                     style = "color: #888; font-style: italic; padding: 20px 0;",
+                     p("Content hidden during peer review.")
                    )
                  ))
                )
