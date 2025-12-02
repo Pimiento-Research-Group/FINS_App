@@ -142,33 +142,16 @@ ui <- tagList(
                    uiOutput("readme_ui_guide")
                  )),
                  column(4, wellPanel(
-                   h4("How to cite & Contact"),
+                   h4("Supported by"),
                    tags$div(
-                     h5("How to cite FINS?"),
-                     p(
-                       "Kocáková, K., Villafaña, J., Gardiner, A., Mathes, G., & Pimiento, C. (2025). ",
-                       tags$em("FINS - A global occurrence dataset of fossil neoselachians from the Cretaceous to the Quaternary"),
-                       ". Biorxiv. ",
-                       tags$a(href = "https://doi.org/10.1101/2025.11.21.689757", 
-                              "https://doi.org/10.1101/2025.11.21.689757", 
-                              target = "_blank")
-                     ),
-                     tags$hr(),
-                     h5("Contact us"),
-                     p("If you would like to report an error or provide a suggestion on how to improve our platform please contact us via the email below."),
-                     p(tags$a(href = "mailto:kristina.kocakova@pim.uzh.ch", "kristina.kocakova@pim.uzh.ch")),                     # Logos at the bottom
-                     tags$hr(),
+                     style = "margin-top: 20px; text-align: center;",
                      tags$div(
-                       style = "margin-top: 20px; text-align: center;",
-                       tags$p("Supported by", style = "color: #666; font-size: 12px; margin-bottom: 15px;"),
-                       tags$div(
-                         style = "display: flex; justify-content: center; align-items: center; gap: 40px;",
-                         tags$img(src = "branding/uzh-logo-black.png", height = "50px", alt = "University of Zurich"),
-                         tags$img(src = "branding/SNF_logo_standard_office_color_pos_e.png", height = "50px", alt = "Swiss National Science Foundation")
-                       )
+                       style = "display: flex; justify-content: center; align-items: center; gap: 40px;",
+                       tags$img(src = "branding/uzh-logo-black.png", height = "50px", alt = "University of Zurich"),
+                       tags$img(src = "branding/SNF_logo_standard_office_color_pos_e.png", height = "50px", alt = "Swiss National Science Foundation")
                      )
-                   ))
-                 )
+                   )
+                 ))
                )
              )
     ),

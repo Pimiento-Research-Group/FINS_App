@@ -1,7 +1,3 @@
-### FINS app - An app to explore (and contribute to) a global dataset of neoselachian fossil occurrences from the Cretaceous to the Quaternary
-
----
-
 #### Why FINS?
 
 Modern sharks, rays and skates (Neoselachii) are a diverse, globally distributed, and ecologically important group. 
