@@ -131,11 +131,10 @@ ui <- tagList(
     tabPanel("Home",
              fluidPage(
                h2("FINS - FossIl NeoselachianS - app"),
-               p("This app allows users to explore and add data to the FINS dataset, which consists of fossil occurrences, each linked to a collection and reference."),
+               p("FINS app - An app to explore (and contribute to) a global dataset of neoselachian fossil occurrences from the Cretaceous to the Quaternary"),
                tags$hr(),
                fluidRow(
                  column(4, wellPanel(
-                   h4("About"),
                    uiOutput("readme_ui_about")
                  )),
                  column(4, wellPanel(
@@ -157,8 +156,7 @@ ui <- tagList(
                      tags$hr(),
                      h5("Contact us"),
                      p("If you would like to report an error or provide a suggestion on how to improve our platform please contact us via the email below."),
-                     p("*Corresponding author: ", tags$a(href = "mailto:kristina.kocakova@pim.uzh.ch", "kristina.kocakova@pim.uzh.ch")),
-                     # Logos at the bottom
+                     p(tags$a(href = "mailto:kristina.kocakova@pim.uzh.ch", "kristina.kocakova@pim.uzh.ch")),                     # Logos at the bottom
                      tags$hr(),
                      tags$div(
                        style = "margin-top: 20px; text-align: center;",
