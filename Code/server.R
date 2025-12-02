@@ -177,10 +177,10 @@ server <- function(input, output, session) {
       # Add marker columns for highlighting
       out$m_modified_identified_name <- !is.na(tax_result$modified_identified_name) & tax_result$modified_identified_name != ""
       out$m_accepted_name <- !is.na(tax_result$accepted_name) & tax_result$accepted_name != ""
-      out$m_genus <- !is.na(tax_result$genus) & tax_result$genus != "" & tax_result$genus != "Unknown"
-      out$m_family <- !is.na(tax_result$family) & tax_result$family != "" & tax_result$family != "Unknown"
-      out$m_order <- !is.na(tax_result$order) & tax_result$order != "" & tax_result$order != "Unknown"
-      out$m_superorder <- !is.na(tax_result$superorder) & tax_result$superorder != "" & tax_result$superorder != "Unknown"
+      out$m_genus <- !is.na(tax_result$genus) & tax_result$genus != ""
+      out$m_family <- !is.na(tax_result$family) & tax_result$family != ""
+      out$m_order <- !is.na(tax_result$order) & tax_result$order != ""
+      out$m_superorder <- !is.na(tax_result$superorder) & tax_result$superorder != ""
       out$m_rank <- !is.na(tax_result$rank) & tax_result$rank != "" & tax_result$rank != "UNKNOWN"
       out$m_status <- !is.na(tax_result$status) & tax_result$status != ""
       out$m_genus_status <- !is.na(tax_result$genus_status) & tax_result$genus_status != ""
@@ -377,6 +377,74 @@ server <- function(input, output, session) {
     base_occ
   })
   
+  # Reactive filter choices based on current taxonomy
+  order_choices_reactive <- reactive({
+    us(occ_with_taxonomy()$order)
+  })
+  
+  superorder_choices_reactive <- reactive({
+    us(occ_with_taxonomy()$superorder)
+  })
+  
+  family_choices_reactive <- reactive({
+    us(occ_with_taxonomy()$family)
+  })
+  
+  status_choices_reactive <- reactive({
+    us(occ_with_taxonomy()$status)
+  })
+  
+  # Update filter choices when taxonomy changes
+  observeEvent(input$taxonomy_source_occ, {
+    updateSelectizeInput(session, "order_occ", 
+                         choices = order_choices_reactive(),
+                         selected = character(0),
+                         server = TRUE)
+    
+    updateSelectizeInput(session, "superorder_occ",
+                         choices = superorder_choices_reactive(), 
+                         selected = character(0),
+                         server = TRUE)
+    
+    updateSelectizeInput(session, "family_occ",
+                         choices = family_choices_reactive(),
+                         selected = character(0),
+                         server = TRUE)
+    
+    updateSelectizeInput(session, "status_occ",
+                         choices = status_choices_reactive(),
+                         selected = character(0),
+                         server = TRUE)
+  }, ignoreInit = TRUE)
+  
+  # Reactive taxonomic hierarchy mappings
+  superorder_to_orders_reactive <- reactive({
+    occ_with_taxonomy() %>%
+      filter(!is.na(superorder), !is.na(order)) %>%
+      distinct(superorder, order) %>%
+      group_by(superorder) %>%
+      summarize(orders = list(sort(unique(order))), .groups = 'drop') %>%
+      {setNames(.$orders, .$superorder)}
+  })
+  
+  order_to_families_reactive <- reactive({
+    occ_with_taxonomy() %>%
+      filter(!is.na(order), !is.na(family)) %>%
+      distinct(order, family) %>%
+      group_by(order) %>%
+      summarize(families = list(sort(unique(family))), .groups = 'drop') %>%
+      {setNames(.$families, .$order)}
+  })
+  
+  superorder_to_families_reactive <- reactive({
+    occ_with_taxonomy() %>%
+      filter(!is.na(superorder), !is.na(family)) %>%
+      distinct(superorder, family) %>%
+      group_by(superorder) %>%
+      summarize(families = list(sort(unique(family))), .groups = 'drop') %>%
+      {setNames(.$families, .$superorder)}
+  })
+  
   # ---- Welcome tab ----
   output$readme_ui_about <- renderUI({
     readme_path <- here::here("data", "ReadMe_about.md")
@@ -444,7 +512,7 @@ server <- function(input, output, session) {
       available_orders <- c()
       for (so in input$superorder_occ) {
         if (!is.null(superorder_to_orders_reactive()[[so]])) {
-          available_orders <- c(available_orders, superorder_to_orders[[so]])
+          available_orders <- c(available_orders, superorder_to_orders_reactive()[[so]])
         }
       }
       available_orders <- sort(unique(available_orders[!is.na(available_orders)]))
@@ -469,7 +537,7 @@ server <- function(input, output, session) {
     if (length(input$order_occ) > 0) {
       # If orders are selected, use order -> family mapping
       for (ord in input$order_occ) {
-        if (!is.null(order_to_families[[ord]])) {
+        if (!is.null(order_to_families_reactive()[[ord]])) {
           available_families <- c(available_families, order_to_families[[ord]])
         }
       }
@@ -501,7 +569,7 @@ server <- function(input, output, session) {
   # When taxonomic filters change, update available statuses
   observeEvent(list(input$superorder_occ, input$order_occ, input$family_occ), {
     # Filter data based on current taxonomic selections
-    filtered_data <- occ
+    filtered_data <- occ_with_taxonomy()
     
     if (length(input$superorder_occ) > 0) {
       filtered_data <- filtered_data %>% filter(superorder %in% input$superorder_occ)
@@ -566,8 +634,8 @@ server <- function(input, output, session) {
     if (length(input$superorder_occ) > 0) {
       available_orders <- c()
       for (so in input$superorder_occ) {
-        if (!is.null(superorder_to_orders[[so]])) {
-          available_orders <- c(available_orders, superorder_to_orders[[so]])
+        if (!is.null(superorder_to_orders_reactive()[[so]])) {
+          available_orders <- c(available_orders, superorder_to_orders_reactive()[[so]])
         }
       }
       available_orders <- sort(unique(available_orders[!is.na(available_orders)]))
@@ -597,14 +665,14 @@ server <- function(input, output, session) {
     
     if (length(input$order_occ) > 0) {
       for (ord in input$order_occ) {
-        if (!is.null(order_to_families[[ord]])) {
-          available_families <- c(available_families, order_to_families[[ord]])
+        if (!is.null(order_to_families_reactive()[[ord]])) {
+          available_families <- c(available_families, order_to_families_reactive()[[ord]])
         }
       }
     } else if (length(input$superorder_occ) > 0) {
       for (so in input$superorder_occ) {
-        if (!is.null(superorder_to_families[[so]])) {
-          available_families <- c(available_families, superorder_to_families[[so]])
+        if (!is.null(superorder_to_families_reactive()[[so]])) {
+          available_families <- c(available_families, superorder_to_families_reactive()[[so]])
         }
       }
     }
@@ -614,7 +682,7 @@ server <- function(input, output, session) {
     if (length(available_families) > 0) {
       updateSelectizeInput(session, "family_occ", selected = available_families)
     } else {
-      updateSelectizeInput(session, "family_occ", selected = family_choices)
+      updateSelectizeInput(session, "family_occ", selected = family_choices_reactive())
     }
   })
   observeEvent(input$clear_all_family_occ, {
@@ -630,7 +698,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$select_all_status_occ, {
     # Get current available statuses based on taxonomic selection
-    filtered_data <- occ
+    filtered_data <- occ_with_taxonomy()
     
     if (length(input$superorder_occ) > 0) {
       filtered_data <- filtered_data %>% filter(superorder %in% input$superorder_occ)
