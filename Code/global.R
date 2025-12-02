@@ -53,8 +53,20 @@ coalesce_col <- function(df, col_names) {
 # Epoch/Period filters: keep row if EITHER early_* OR late_* matches a selected value
 overlaps_time <- function(df, epochs_sel, periods_sel) {
   out <- df
-  if (length(epochs_sel))  out <- out %>% filter((early_epoch %in% epochs_sel)  | (late_epoch %in% epochs_sel))
-  if (length(periods_sel)) out <- out %>% filter((early_period %in% periods_sel) | (late_period %in% periods_sel))
+  if (length(epochs_sel)) {
+    out <- out %>% filter(
+      (early_epoch %in% epochs_sel) | 
+        (late_epoch %in% epochs_sel) |
+        (is.na(early_epoch) & is.na(late_epoch))  # Keep rows with no epoch data
+    )
+  }
+  if (length(periods_sel)) {
+    out <- out %>% filter(
+      (early_period %in% periods_sel) | 
+        (late_period %in% periods_sel) |
+        (is.na(early_period) & is.na(late_period))  # Keep rows with no period data
+    )
+  }
   out
 }
 

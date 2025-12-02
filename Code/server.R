@@ -3,7 +3,7 @@
 server <- function(input, output, session) {
   
   # Use rv$occ / rv$col / rv$refs everywhere instead of raw occ/col/refs
-  rv <- reactiveValues(occ = occ, col = col, refs = refs)
+  rv <- reactiveValues(occ = occ, col = col, refs = refs, occ_version = 0)
   
   # Cache for paleocoords keyed by the uploaded Collections file contents
   rv$paleo_cache <- list()
@@ -147,7 +147,7 @@ server <- function(input, output, session) {
       superorder        = df[["superorder"]],
       rank              = df[["rank"]],
       status            = df[["status"]],
-      source            = factor("PBDB", levels = c("PBDB","Literature")),
+      source            = factor("PBDB", levels = source_levels),
       reference         = df[["ref_author"]]
     )
     
@@ -328,6 +328,9 @@ server <- function(input, output, session) {
   
   # Reactive to re-process occurrences with selected taxonomy
   occ_with_taxonomy <- reactive({
+    # Depend on version counter to ensure updates are detected
+    rv$occ_version
+    
     # Get base occurrence data
     base_occ <- rv$occ
     
@@ -737,6 +740,10 @@ server <- function(input, output, session) {
   
   occ_filtered <- reactive({
     out <- occ_with_taxonomy()
+    
+    # Debug: show total before filtering
+    message(sprintf("occ_with_taxonomy() returned %d rows", nrow(out)))
+    
     out <- overlaps_time(out, input$epochs_occ, input$periods_occ)
     out <- apply_age_thresh_occ(out, input$age_thresh_occ)
     out <- apply_geog(out, input$continent_occ, NULL, input$paleocean_occ)
@@ -1943,10 +1950,13 @@ server <- function(input, output, session) {
   
   pbdb_occ_aligned <- reactive({
     df <- align_to_template(pbdb_occ_processed(), rv$occ)
-    # Keep only columns that exist in the original FINS schema (plus marker columns)
+    # Keep only columns that exist in the original FINS schema (plus marker columns and derived columns)
     marker_cols <- grep("^m_", names(df), value = TRUE)
-    keep_cols <- intersect(names(df), c(occ_original_cols, marker_cols))
-    # Exclude derived columns that shouldn't appear in preview
+    # Include derived columns that are computed during processing (not in original CSV)
+    derived_cols <- c("source", "name_curated", "name_raw", "name_updated", 
+                      "age_range_calc", "age_range_any", "coll_id")
+    keep_cols <- intersect(names(df), c(occ_original_cols, marker_cols, derived_cols))
+    # Exclude columns that shouldn't appear in preview
     exclude_cols <- c("reference_display", "reference_key")
     keep_cols <- setdiff(keep_cols, exclude_cols)
     df[, keep_cols, drop = FALSE]
@@ -2030,6 +2040,45 @@ server <- function(input, output, session) {
     } else if (mode == "replace") {
       rv$occ <- df_new
     }
+    
+    # Increment version to trigger reactive updates
+    
+    rv$occ_version <- rv$occ_version + 1
+    
+    # Debug: show column completeness for new data
+    n_new <- nrow(df_new)
+    showNotification(
+      sprintf("New data: %d rows. With early_epoch: %d, With source: %d",
+              n_new,
+              sum(!is.na(df_new$early_epoch)),
+              sum(!is.na(df_new$source))),
+      type = "message", duration = 10
+    )
+    
+    # Ensure source column has correct factor levels after merge
+    if ("source" %in% names(rv$occ)) {
+      rv$occ$source <- factor(as.character(rv$occ$source), levels = source_levels)
+    }
+    
+    # Recalculate derived columns if missing
+    if (!"name_curated" %in% names(rv$occ) || any(is.na(rv$occ$name_curated))) {
+      rv$occ <- rv$occ %>%
+        mutate(
+          name_curated = dplyr::coalesce(accepted_name, modified_identified_name, identified_name),
+          name_raw     = dplyr::coalesce(identified_name, modified_identified_name, accepted_name),
+          name_updated = !is.na(accepted_name) & accepted_name != identified_name
+        )
+    }
+    
+    # Recalculate age_range_any if needed
+    if (!"age_range_any" %in% names(rv$occ)) {
+      rv$occ <- rv$occ %>%
+        mutate(
+          age_range_calc = ifelse(!is.na(max_ma) & !is.na(min_ma), max_ma - min_ma, NA_real_),
+          age_range_any  = dplyr::coalesce(age_range, age_range_calc)
+        )
+    }
+    
     if (mode != "preview") {
       output$pbdb_occ_status <- renderUI({
         tags$div(class = "text-success",
