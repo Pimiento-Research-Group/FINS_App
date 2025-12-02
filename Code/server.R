@@ -2020,11 +2020,13 @@ server <- function(input, output, session) {
   observeEvent(input$pbdb_occ_apply, {
     mode <- input$pbdb_occ_mode
     df_new <- pbdb_occ_aligned()
+    
+    # Remove marker columns before applying - they're only for preview highlighting
+    df_new <- df_new %>% dplyr::select(-tidyselect::matches("^m_"))
+    
     if (mode == "append") {
-      rv$occ <- dplyr::bind_rows(
-        align_to_template(rv$occ, rv$occ)[, union(names(rv$occ), names(df_new)), drop = FALSE],
-        df_new[, union(names(rv$occ), names(df_new)), drop = FALSE]
-      )
+      # bind_rows handles missing columns automatically
+      rv$occ <- dplyr::bind_rows(rv$occ, df_new)
     } else if (mode == "replace") {
       rv$occ <- df_new
     }
