@@ -8,6 +8,10 @@ server <- function(input, output, session) {
   # Cache for paleocoords keyed by the uploaded Collections file contents
   rv$paleo_cache <- list()
   
+  # Store alternative taxonomy
+  rv$alt_taxonomy_map <- NULL
+  rv$alt_taxonomy_name <- NULL
+  
   # Read CSV with flexible delimiter
   read_upload_csv <- function(file, header = TRUE, delim_choice = "Auto") {
     if (is.null(file)) return(NULL)
@@ -149,7 +153,16 @@ server <- function(input, output, session) {
     
     # Process taxonomy from identified_name
     if ("identified_name" %in% names(out) && exists("process_taxonomy_batch")) {
-      tax_result <- process_taxonomy_batch(out$identified_name)
+      # Use selected taxonomy map
+      selected_tax_map <- if (!is.null(input$taxonomy_source_occ) && 
+                              input$taxonomy_source_occ == "alt" && 
+                              !is.null(rv$alt_taxonomy_map)) {
+        rv$alt_taxonomy_map
+      } else {
+        taxonomy_map
+      }
+      
+      tax_result <- process_taxonomy_batch(out$identified_name, selected_tax_map)
       
       out$modified_identified_name <- tax_result$modified_identified_name
       out$accepted_name <- tax_result$accepted_name
@@ -181,6 +194,188 @@ server <- function(input, output, session) {
     
     out
   }
+  
+  # Handle alternative taxonomy file upload
+  observeEvent(input$alt_taxonomy_file, {
+    req(input$alt_taxonomy_file)
+    
+    file_path <- input$alt_taxonomy_file$datapath
+    file_name <- input$alt_taxonomy_file$name
+    file_ext <- tolower(tools::file_ext(file_name))
+    
+    tryCatch({
+      # Read the file based on extension
+      if (file_ext == "xlsx") {
+        alt_lookup <- readxl::read_excel(file_path, .name_repair = "minimal")
+      } else if (file_ext == "csv") {
+        alt_lookup <- readr::read_csv(file_path, show_col_types = FALSE)
+      } else {
+        showNotification("Please upload a .xlsx or .csv file", type = "error")
+        return()
+      }
+      
+      # Check required columns
+      required_cols <- c("Superorder", "Order", "Family", "Genus")
+      missing_cols <- setdiff(required_cols, names(alt_lookup))
+      
+      if (length(missing_cols) > 0) {
+        showNotification(
+          paste("Missing required columns:", paste(missing_cols, collapse = ", ")),
+          type = "error", duration = 8
+        )
+        return()
+      }
+      
+      # Build taxonomy map from uploaded file
+      alt_lookup <- alt_lookup %>%
+        dplyr::select(Superorder, Order, Family, Genus, starts_with("Synonym.")) %>%
+        dplyr::filter(!is.na(Genus))
+      
+      # Build the map
+      alt_map <- list()
+      for (i in seq_len(nrow(alt_lookup))) {
+        row <- alt_lookup[i, ]
+        canonical <- row$Genus
+        info <- list(
+          genus = canonical,
+          family = row$Family,
+          order = row$Order,
+          superorder = row$Superorder
+        )
+        
+        # Add canonical genus
+        alt_map[[tolower(canonical)]] <- info
+        
+        # Add synonyms
+        syn_cols <- grep("^Synonym", names(row), value = TRUE)
+        for (syn_col in syn_cols) {
+          syn <- row[[syn_col]]
+          if (!is.na(syn) && syn != "") {
+            alt_map[[tolower(syn)]] <- info
+          }
+        }
+      }
+      
+      rv$alt_taxonomy_map <- alt_map
+      rv$alt_taxonomy_name <- file_name
+      
+      showNotification(
+        sprintf("Alternative taxonomy loaded: %d genera from '%s'", 
+                nrow(alt_lookup), file_name),
+        type = "message", duration = 5
+      )
+      
+      # Update the radio button to include the new option
+      updateRadioButtons(session, "taxonomy_source_occ",
+                         choices = c("Use FINS taxonomy" = "fins",
+                                     "Use uploaded taxonomy" = "alt"),
+                         selected = "fins")
+      
+    }, error = function(e) {
+      showNotification(paste("Error reading file:", e$message), type = "error", duration = 8)
+    })
+  })
+  
+  # Status display for alternative taxonomy
+  output$alt_taxonomy_status <- renderUI({
+    if (!is.null(rv$alt_taxonomy_map)) {
+      tags$div(
+        class = "alert alert-success",
+        style = "padding: 8px; font-size: 12px;",
+        tags$strong("✓ Loaded: "), rv$alt_taxonomy_name,
+        tags$br(),
+        sprintf("%d genera available", length(unique(sapply(rv$alt_taxonomy_map, function(x) x$genus))))
+      )
+    } else {
+      NULL
+    }
+  })
+  
+  # Warning if no alternative taxonomy uploaded
+  output$taxonomy_source_warning <- renderUI({
+    if (is.null(rv$alt_taxonomy_map)) {
+      tags$div(
+        style = "font-size: 11px; color: #666; margin-top: -5px; margin-bottom: 10px;",
+        tags$em("Upload an alternative taxonomy in the 'Add data' tab to enable this option.")
+      )
+    } else {
+      tags$div(
+        style = "font-size: 11px; color: #28a745; margin-top: -5px; margin-bottom: 10px;",
+        tags$em(sprintf("Alternative taxonomy available: %s", rv$alt_taxonomy_name))
+      )
+    }
+  })
+  
+  # Reset taxonomy selector if no alt taxonomy available
+  observe({
+    if (is.null(rv$alt_taxonomy_map)) {
+      updateRadioButtons(session, "taxonomy_source_occ",
+                         choices = c("Use FINS taxonomy" = "fins"),
+                         selected = "fins")
+    }
+  })
+  
+  # Reactive to get the current taxonomy map
+  current_taxonomy_map <- reactive({
+    if (!is.null(input$taxonomy_source_occ) && 
+        input$taxonomy_source_occ == "alt" && 
+        !is.null(rv$alt_taxonomy_map)) {
+      rv$alt_taxonomy_map
+    } else {
+      taxonomy_map  # Default from global.R
+    }
+  })
+  
+  # Reactive to re-process occurrences with selected taxonomy
+  occ_with_taxonomy <- reactive({
+    # Get base occurrence data
+    base_occ <- rv$occ
+    
+    # If using FINS taxonomy (default), just return the data as-is (already processed)
+    if (is.null(input$taxonomy_source_occ) || input$taxonomy_source_occ == "fins") {
+      return(base_occ)
+    }
+    
+    # Only re-process if using alternative taxonomy
+    if (input$taxonomy_source_occ == "alt" && !is.null(rv$alt_taxonomy_map)) {
+      
+      # Only re-process if we have identified_name column
+      if (!"identified_name" %in% names(base_occ)) {
+        return(base_occ)
+      }
+      
+      # Show notification instead of progress bar
+      notif_id <- showNotification("Applying alternative taxonomy...", duration = NULL, type = "message")
+      
+      # Re-process taxonomy for all occurrences
+      tax_result <- process_taxonomy_batch(base_occ$identified_name, rv$alt_taxonomy_map)
+      
+      # Update taxonomic columns
+      base_occ$modified_identified_name <- tax_result$modified_identified_name
+      base_occ$accepted_name <- tax_result$accepted_name
+      base_occ$genus <- tax_result$genus
+      base_occ$family <- tax_result$family
+      base_occ$order <- tax_result$order
+      base_occ$superorder <- tax_result$superorder
+      base_occ$rank <- tax_result$rank
+      base_occ$status <- tax_result$status
+      base_occ$genus_status <- tax_result$genus_status
+      
+      # Update derived columns
+      base_occ <- base_occ %>% 
+        mutate(
+          name_curated = dplyr::coalesce(accepted_name, modified_identified_name, identified_name),
+          name_raw     = dplyr::coalesce(identified_name, modified_identified_name, accepted_name),
+          name_updated = !is.na(accepted_name) & accepted_name != identified_name
+        )
+      
+      # Remove notification
+      removeNotification(notif_id)
+      showNotification("Alternative taxonomy applied!", duration = 3, type = "message")
+    }
+    
+    base_occ
+  })
   
   # ---- Welcome tab ----
   output$readme_ui_about <- renderUI({
@@ -248,7 +443,7 @@ server <- function(input, output, session) {
       # Filter orders based on selected superorders
       available_orders <- c()
       for (so in input$superorder_occ) {
-        if (!is.null(superorder_to_orders[[so]])) {
+        if (!is.null(superorder_to_orders_reactive()[[so]])) {
           available_orders <- c(available_orders, superorder_to_orders[[so]])
         }
       }
@@ -473,7 +668,7 @@ server <- function(input, output, session) {
   })
   
   occ_filtered <- reactive({
-    out <- rv$occ
+    out <- occ_with_taxonomy()
     out <- overlaps_time(out, input$epochs_occ, input$periods_occ)
     out <- apply_age_thresh_occ(out, input$age_thresh_occ)
     out <- apply_geog(out, input$continent_occ, NULL, input$paleocean_occ)

@@ -273,6 +273,12 @@ ui <- tagList(
                                             style = "default",
                                             value = "panel_curation_occ",
                                             
+                                            radioButtons("taxonomy_source_occ", "Taxonomy list:",
+                                                         choices = c("Use FINS taxonomy" = "fins"),
+                                                         selected = "fins"),
+                                            uiOutput("taxonomy_source_warning"),
+                                            tags$hr(),
+                                            
                                             radioButtons("name_mode_occ", "Name display:",
                                                          choices = c("Curated (accepted_name)"="cur","As provided (identified_name)"="raw"),
                                                          selected = "cur"),
@@ -463,6 +469,18 @@ ui <- tagList(
     tabPanel("Add data",
              sidebarLayout(
                sidebarPanel(
+                 # Alternative taxonomy upload section
+                 h4("Upload alternative taxonomic list"),
+                 tags$div(
+                   class = "alert alert-info",
+                   style = "margin-bottom: 15px; padding: 10px; font-size: 12px;",
+                   tags$strong("ℹ️ Optional: "),
+                   "If you wish to use an alternative taxonomic list instead of the default FINS taxonomy, upload it here before uploading occurrences. The file must have the same structure as the FINS taxonomy (Superorder, Order, Family, Genus, Synonym columns)."
+                 ),
+                 fileInput("alt_taxonomy_file", "Choose taxonomy file (.xlsx or .csv)",
+                           accept = c(".xlsx", ".csv", "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+                 uiOutput("alt_taxonomy_status"),
+                 tags$hr(),
                  h4("Upload PBDB Collections"),
                  fileInput("pbdb_col_file", "Choose PBDB Collections CSV",
                            accept = c("text/csv","text/comma-separated-values,text/plain",".csv")),

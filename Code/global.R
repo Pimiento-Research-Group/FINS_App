@@ -700,15 +700,21 @@ clean_identified_name <- function(name) {
 }
 
 # Function to look up taxonomy for a genus
-lookup_taxonomy <- function(genus) {
+# Function to look up taxonomy for a genus
+lookup_taxonomy <- function(genus, tax_map = NULL) {
   if (is.na(genus) || genus == "") {
     return(list(accepted_genus = NA, family = NA, order = NA, superorder = NA, matched = FALSE))
   }
   
+  # Use provided map or default
+  if (is.null(tax_map)) {
+    tax_map <- taxonomy_map
+  }
+  
   key <- tolower(trimws(genus))
   
-  if (key %in% names(taxonomy_map)) {
-    info <- taxonomy_map[[key]]
+  if (key %in% names(tax_map)) {
+    info <- tax_map[[key]]
     return(list(
       accepted_genus = info$genus,
       family = info$family,
@@ -722,7 +728,8 @@ lookup_taxonomy <- function(genus) {
 }
 
 # Vectorized function to process all names
-process_taxonomy_batch <- function(identified_names) {
+process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
+  
   n <- length(identified_names)
   
   result <- data.frame(
@@ -748,7 +755,7 @@ process_taxonomy_batch <- function(identified_names) {
   
   for (i in seq_len(n)) {
     cleaned <- clean_identified_name(identified_names[i])
-    tax <- lookup_taxonomy(cleaned$genus_extracted)
+    tax <- lookup_taxonomy(cleaned$genus_extracted, tax_map)
     
     result$modified_identified_name[i] <- cleaned$modified %||% NA_character_
     result$genus[i] <- tax$accepted_genus %||% cleaned$genus_extracted %||% "Unknown"
