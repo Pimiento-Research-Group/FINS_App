@@ -786,28 +786,60 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
     tax <- lookup_taxonomy(cleaned$genus_extracted, tax_map)
     
     result$modified_identified_name[i] <- cleaned$modified %||% NA_character_
-    result$genus[i] <- tax$accepted_genus %||% cleaned$genus_extracted %||% "Unknown"
-    result$family[i] <- tax$family %||% "Unknown"
-    result$order[i] <- tax$order %||% "Unknown"
-    result$superorder[i] <- tax$superorder %||% "Unknown"
     
-    # Determine accepted_name
-    if (!is.na(tax$accepted_genus) && !is.na(cleaned$modified)) {
-      words <- strsplit(cleaned$modified, "\\s+")[[1]]
-      if (length(words) > 0) {
-        words[1] <- tax$accepted_genus
-        result$accepted_name[i] <- paste(words, collapse = " ")
+    # Check if this is a genus/species level name that failed lookup
+    # (we'll determine rank first to know how to handle it)
+    name_to_check <- cleaned$modified %||% ""
+    words_for_rank <- strsplit(trimws(name_to_check), "\\s+")[[1]]
+    word_count_for_rank <- length(words_for_rank)
+    first_word_for_rank <- if (word_count_for_rank > 0) words_for_rank[1] else ""
+    has_sp_for_rank <- any(grepl("^sp\\.?$", words_for_rank, ignore.case = TRUE))
+    
+    # Determine if this appears to be genus/species level (not family/order/superorder)
+    is_higher_rank <- grepl("dae$", first_word_for_rank, ignore.case = TRUE) ||  # family
+      grepl("formes$", first_word_for_rank, ignore.case = TRUE) ||  # order
+      first_word_for_rank %in% c("Batoidea", "Galeomorphii", "Squalomorphii", "Selachii", "Neoselachii")
+    
+    is_genus_species_level <- !is_higher_rank && word_count_for_rank >= 1
+    
+    # If taxonomy lookup failed and this looks like genus/species level, flag it
+    if (!tax$matched && is_genus_species_level) {
+      result$genus[i] <- "Unknown"
+      result$family[i] <- "Unknown"
+      result$order[i] <- "Unknown"
+      result$superorder[i] <- "Unknown"
+      result$accepted_name[i] <- "Unknown"  # Flag as not in taxonomy list
+    } else if (tax$matched) {
+      result$genus[i] <- tax$accepted_genus
+      result$family[i] <- tax$family %||% "Unknown"
+      result$order[i] <- tax$order %||% "Unknown"
+      result$superorder[i] <- tax$superorder %||% "Unknown"
+      
+      # Determine accepted_name with validated genus
+      if (!is.na(tax$accepted_genus) && !is.na(cleaned$modified)) {
+        words <- strsplit(cleaned$modified, "\\s+")[[1]]
+        if (length(words) > 0) {
+          words[1] <- tax$accepted_genus
+          result$accepted_name[i] <- paste(words, collapse = " ")
+        } else {
+          result$accepted_name[i] <- tax$accepted_genus
+        }
       } else {
-        result$accepted_name[i] <- tax$accepted_genus
+        result$accepted_name[i] <- cleaned$modified %||% NA_character_
       }
     } else {
+      # Higher-rank identification that didn't need genus lookup
+      result$genus[i] <- "Unknown"
+      result$family[i] <- "Unknown"
+      result$order[i] <- "Unknown"
+      result$superorder[i] <- "Unknown"
       result$accepted_name[i] <- cleaned$modified %||% NA_character_
     }
     
     # Determine rank based on accepted_name
     name_to_check <- result$accepted_name[i]
     if (is.na(name_to_check) || name_to_check == "") {
-      result$rank[i] <- "UNKNOWN"
+      result$rank[i] <- "Unknown"
     } else {
       words <- strsplit(trimws(name_to_check), "\\s+")[[1]]
       word_count <- length(words)
@@ -833,7 +865,7 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
           result$rank[i] <- "genus"
         }
       } else {
-        result$rank[i] <- "UNKNOWN"
+        result$rank[i] <- "Unknown"
       }
     }
     
@@ -887,7 +919,7 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
         result$order[i] <- "Unknown"
         result$superorder[i] <- "Unknown"
         
-      } else if (current_rank == "genus" || current_rank == "species" || current_rank == "UNKNOWN") {
+      } else if (current_rank == "genus" || current_rank == "species" || current_rank == "Unknown") {
         # Genus not found in lookup - keep extracted genus, mark rest as Unknown
         if (is.na(result$genus[i]) || result$genus[i] == "") {
           result$genus[i] <- cleaned$genus_extracted %||% "Unknown"
@@ -911,28 +943,40 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
     order_name <- result$order[i] %||% ""
     
     if (current_rank == "species") {
-      # Check species against extant_species_list
-      if (accepted_name_lower %in% extant_species_list) {
-        result$status[i] <- "extant"
+      # Check if genus was recognized
+      if (result$genus[i] == "Unknown") {
+        result$status[i] <- "Unknown"
+        result$genus_status[i] <- "Unknown"
       } else {
-        result$status[i] <- "extinct"
-      }
-      # Check genus for genus_status
-      if (genus_lower %in% extant_genera_list) {
-        result$genus_status[i] <- "extant"
-      } else {
-        result$genus_status[i] <- "extinct"
+        # Check species against extant_species_list
+        if (accepted_name_lower %in% extant_species_list) {
+          result$status[i] <- "extant"
+        } else {
+          result$status[i] <- "extinct"
+        }
+        # Check genus for genus_status
+        if (genus_lower %in% extant_genera_list) {
+          result$genus_status[i] <- "extant"
+        } else {
+          result$genus_status[i] <- "extinct"
+        }
       }
       
     } else if (current_rank == "genus") {
-      # Check genus against extant_genera_list
-      if (genus_lower %in% extant_genera_list) {
-        result$status[i] <- "extant"
+      # Check if genus was recognized
+      if (result$genus[i] == "Unknown") {
+        result$status[i] <- "Unknown"
+        result$genus_status[i] <- "Unknown"
       } else {
-        result$status[i] <- "extinct"
+        # Check genus against extant_genera_list
+        if (genus_lower %in% extant_genera_list) {
+          result$status[i] <- "extant"
+        } else {
+          result$status[i] <- "extinct"
+        }
+        # genus_status same as status for genus-level
+        result$genus_status[i] <- result$status[i]
       }
-      # genus_status same as status for genus-level
-      result$genus_status[i] <- result$status[i]
       
     } else if (current_rank == "family") {
       # For family-level IDs, check the family field against extant_families_list
@@ -961,8 +1005,8 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
       result$genus_status[i] <- "NA"
       
     } else {
-      # UNKNOWN rank
-      result$status[i] <- "UNKNOWN"
+      # Unknown rank
+      result$status[i] <- "Unknown"
       result$genus_status[i] <- "NA"
     }
   }
