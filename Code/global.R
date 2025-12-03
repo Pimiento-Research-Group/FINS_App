@@ -943,40 +943,28 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
     order_name <- result$order[i] %||% ""
     
     if (current_rank == "species") {
-      # Check if genus was recognized
-      if (result$genus[i] == "Unknown") {
-        result$status[i] <- "Unknown"
-        result$genus_status[i] <- "Unknown"
+      # Check species against extant_species_list
+      if (accepted_name_lower %in% extant_species_list) {
+        result$status[i] <- "extant"
       } else {
-        # Check species against extant_species_list
-        if (accepted_name_lower %in% extant_species_list) {
-          result$status[i] <- "extant"
-        } else {
-          result$status[i] <- "extinct"
-        }
-        # Check genus for genus_status
-        if (genus_lower %in% extant_genera_list) {
-          result$genus_status[i] <- "extant"
-        } else {
-          result$genus_status[i] <- "extinct"
-        }
+        result$status[i] <- "extinct"
+      }
+      # Check genus for genus_status
+      if (genus_lower %in% extant_genera_list) {
+        result$genus_status[i] <- "extant"
+      } else {
+        result$genus_status[i] <- "extinct"
       }
       
     } else if (current_rank == "genus") {
-      # Check if genus was recognized
-      if (result$genus[i] == "Unknown") {
-        result$status[i] <- "Unknown"
-        result$genus_status[i] <- "Unknown"
+      # Check genus against extant_genera_list
+      if (genus_lower %in% extant_genera_list) {
+        result$status[i] <- "extant"
       } else {
-        # Check genus against extant_genera_list
-        if (genus_lower %in% extant_genera_list) {
-          result$status[i] <- "extant"
-        } else {
-          result$status[i] <- "extinct"
-        }
-        # genus_status same as status for genus-level
-        result$genus_status[i] <- result$status[i]
+        result$status[i] <- "extinct"
       }
+      # genus_status same as status for genus-level
+      result$genus_status[i] <- result$status[i]
       
     } else if (current_rank == "family") {
       # For family-level IDs, check the family field against extant_families_list
