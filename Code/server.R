@@ -2138,6 +2138,15 @@ server <- function(input, output, session) {
       type = "message", duration = 5
     )
     
+    # Update source filter choices to include PBDB_U
+    current_sources <- us(rv$col$collection_source)
+    present_sources <- intersect(source_levels, current_sources)
+    if (length(present_sources) == 0) present_sources <- source_levels
+    updateCheckboxGroupInput(session, "source_filter_col",
+                             choices = present_sources, 
+                             selected = present_sources, 
+                             inline = TRUE)
+    
     isolate({
       if (isTRUE(input$sync_col_with_occ)) {
         showNotification(
