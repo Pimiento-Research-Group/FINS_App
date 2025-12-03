@@ -636,9 +636,25 @@ extant_families <- readxl::read_excel(
 )
 
 # Create lowercase lookup vectors for matching
-extant_species_list <- tolower(trimws(extant_species[[1]]))  # Assuming species names in first column
-extant_genera_list <- tolower(trimws(extant_genera[[1]]))    # Assuming genus names in first column
-extant_families_list <- tolower(trimws(extant_families[[1]])) # Assuming family names in first column
+# Species: check which column contains species names (binomial names)
+extant_species_list <- tolower(trimws(extant_species[[1]]))
+
+# Genera: check which column contains genus names
+extant_genera_list <- tolower(trimws(extant_genera[[1]]))
+
+# Families: find column containing family names (ending in -dae or -idae)
+# The family names are not in column 1, need to find the right column
+family_col_idx <- which(sapply(extant_families, function(col) {
+  any(grepl("dae$", col, ignore.case = TRUE), na.rm = TRUE)
+}))[1]
+
+if (!is.na(family_col_idx)) {
+  extant_families_list <- tolower(trimws(extant_families[[family_col_idx]]))
+} else {
+  # Fallback to column 3 based on typical structure
+  extant_families_list <- tolower(trimws(extant_families[[3]]))
+}
+extant_families_list <- extant_families_list[!is.na(extant_families_list) & extant_families_list != ""]
 
 # Build a lookup table: genus/synonym -> canonical genus with taxonomy
 build_taxonomy_map <- function(lookup_df) {
@@ -823,6 +839,72 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
     
     # Determine status and genus_status based on rank and extant lists
     current_rank <- result$rank[i]
+    
+    # Fix taxonomy fields based on actual rank (when taxonomy lookup failed)
+    if (!tax$matched) {
+      name_for_rank <- trimws(result$accepted_name[i] %||% cleaned$genus_extracted %||% "")
+      
+      if (current_rank == "family") {
+        # The "genus" extracted is actually a family name
+        result$genus[i] <- "Unknown"
+        result$family[i] <- name_for_rank
+        
+        # Try to look up order/superorder from taxonomy_lookup based on family
+        family_rows <- taxonomy_lookup[tolower(taxonomy_lookup$Family) == tolower(name_for_rank), ]
+        if (nrow(family_rows) > 0) {
+          result$order[i] <- family_rows$Order[1]
+          result$superorder[i] <- family_rows$Superorder[1]
+        } else {
+          result$order[i] <- "Unknown"
+          result$superorder[i] <- "Unknown"
+        }
+        
+      } else if (current_rank == "order") {
+        # The "genus" extracted is actually an order name
+        result$genus[i] <- "Unknown"
+        result$family[i] <- "Unknown"
+        result$order[i] <- name_for_rank
+        
+        # Try to look up superorder from taxonomy_lookup based on order
+        order_rows <- taxonomy_lookup[tolower(taxonomy_lookup$Order) == tolower(name_for_rank), ]
+        if (nrow(order_rows) > 0) {
+          result$superorder[i] <- order_rows$Superorder[1]
+        } else {
+          result$superorder[i] <- "Unknown"
+        }
+        
+      } else if (current_rank == "superorder") {
+        # The "genus" extracted is actually a superorder name
+        result$genus[i] <- "Unknown"
+        result$family[i] <- "Unknown"
+        result$order[i] <- "Unknown"
+        result$superorder[i] <- name_for_rank
+        
+      } else if (current_rank == "clade" || current_rank == "subcohort") {
+        # Higher-level groupings
+        result$genus[i] <- "Unknown"
+        result$family[i] <- "Unknown"
+        result$order[i] <- "Unknown"
+        result$superorder[i] <- "Unknown"
+        
+      } else if (current_rank == "genus" || current_rank == "species" || current_rank == "UNKNOWN") {
+        # Genus not found in lookup - keep extracted genus, mark rest as Unknown
+        if (is.na(result$genus[i]) || result$genus[i] == "") {
+          result$genus[i] <- cleaned$genus_extracted %||% "Unknown"
+        }
+        if (is.na(result$family[i]) || result$family[i] == "") {
+          result$family[i] <- "Unknown"
+        }
+        if (is.na(result$order[i]) || result$order[i] == "") {
+          result$order[i] <- "Unknown"
+        }
+        if (is.na(result$superorder[i]) || result$superorder[i] == "") {
+          result$superorder[i] <- "Unknown"
+        }
+      }
+    }
+    
+    # Prepare lowercase versions for status checks
     accepted_name_lower <- tolower(trimws(result$accepted_name[i] %||% ""))
     genus_lower <- tolower(trimws(result$genus[i] %||% ""))
     family_lower <- tolower(trimws(result$family[i] %||% ""))
@@ -850,14 +932,10 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
         result$status[i] <- "extinct"
       }
       # genus_status same as status for genus-level
-      if (genus_lower %in% extant_genera_list) {
-        result$genus_status[i] <- "extant"
-      } else {
-        result$genus_status[i] <- "extinct"
-      }
+      result$genus_status[i] <- result$status[i]
       
     } else if (current_rank == "family") {
-      # Check family against extant_families_list
+      # For family-level IDs, check the family field against extant_families_list
       if (family_lower %in% extant_families_list) {
         result$status[i] <- "extant"
       } else {
@@ -891,6 +969,7 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
   
   result
 }
+
 # Ensure reference fields exist
 if (!has_col(occ,  "reference_key"))  occ$reference_key  <- NA_character_
 if (!has_col(col,  "reference_key"))  col$reference_key  <- NA_character_

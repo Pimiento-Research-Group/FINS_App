@@ -741,9 +741,6 @@ server <- function(input, output, session) {
   occ_filtered <- reactive({
     out <- occ_with_taxonomy()
     
-    # Debug: show total before filtering
-    message(sprintf("occ_with_taxonomy() returned %d rows", nrow(out)))
-    
     out <- overlaps_time(out, input$epochs_occ, input$periods_occ)
     out <- apply_age_thresh_occ(out, input$age_thresh_occ)
     out <- apply_geog(out, input$continent_occ, NULL, input$paleocean_occ)
