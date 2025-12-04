@@ -65,7 +65,7 @@ There are 3 types of files that can be uploaded:
      - Please carefully evaluate the data in the preview. If name was misspelled in the identified name column, it will be flagged in the accepted name column as _unknown_. You can search for specific terms in the search bar in the upper right corner. We recommend fixing such issues directly in the .csv file downloaded from PBDB and reuploading it into the application.
      - Once happy with the data, you can append them to FINS.
 
-### IMPORTANT: Curation of the data (i.e., evaluation of reliability of data associated with collections and occurrences) cannot be automated and should be carried out by the user. Curation criteria implemented during the creation of FINS can be accessed in the manuscript.
+#### IMPORTANT: Curation of the data (i.e., evaluation of reliability of data associated with collections and occurrences) cannot be automated and should be carried out by the user. Curation criteria implemented during the creation of FINS can be accessed in the manuscript.
 
 
   3. **Alternative taxonomic list**
