@@ -147,7 +147,7 @@ server <- function(input, output, session) {
       superorder        = df[["superorder"]],
       rank              = df[["rank"]],
       status            = df[["status"]],
-      source            = factor("PBDB", levels = source_levels),
+      source            = factor("PBDB_U", levels = source_levels),
       reference         = df[["ref_author"]]
     )
     
