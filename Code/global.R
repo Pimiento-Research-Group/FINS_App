@@ -837,35 +837,40 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
     }
     
     # Determine rank based on accepted_name
-    name_to_check <- result$accepted_name[i]
-    if (is.na(name_to_check) || name_to_check == "") {
+    # Skip if already flagged as Unknown (unrecognized name)
+    if (result$accepted_name[i] == "Unknown") {
       result$rank[i] <- "Unknown"
     } else {
-      words <- strsplit(trimws(name_to_check), "\\s+")[[1]]
-      word_count <- length(words)
-      first_word <- if (word_count > 0) words[1] else ""
-      has_sp <- any(grepl("^sp\\.?$", words, ignore.case = TRUE))
-      
-      if (word_count >= 2 && !has_sp) {
-        result$rank[i] <- "species"
-      } else if (word_count >= 2 && has_sp) {
-        result$rank[i] <- "genus"
-      } else if (word_count == 1) {
-        if (first_word %in% subcohort_names) {
-          result$rank[i] <- "subcohort"
-        } else if (first_word %in% clade_names) {
-          result$rank[i] <- "clade"
-        } else if (first_word %in% superorder_names) {
-          result$rank[i] <- "superorder"
-        } else if (grepl("formes$", first_word, ignore.case = TRUE)) {
-          result$rank[i] <- "order"
-        } else if (grepl("dae$", first_word, ignore.case = TRUE)) {
-          result$rank[i] <- "family"
-        } else {
-          result$rank[i] <- "genus"
-        }
-      } else {
+      name_to_check <- result$accepted_name[i]
+      if (is.na(name_to_check) || name_to_check == "") {
         result$rank[i] <- "Unknown"
+      } else {
+        words <- strsplit(trimws(name_to_check), "\\s+")[[1]]
+        word_count <- length(words)
+        first_word <- if (word_count > 0) words[1] else ""
+        has_sp <- any(grepl("^sp\\.?$", words, ignore.case = TRUE))
+        
+        if (word_count >= 2 && !has_sp) {
+          result$rank[i] <- "species"
+        } else if (word_count >= 2 && has_sp) {
+          result$rank[i] <- "genus"
+        } else if (word_count == 1) {
+          if (first_word %in% subcohort_names) {
+            result$rank[i] <- "subcohort"
+          } else if (first_word %in% clade_names) {
+            result$rank[i] <- "clade"
+          } else if (first_word %in% superorder_names) {
+            result$rank[i] <- "superorder"
+          } else if (grepl("formes$", first_word, ignore.case = TRUE)) {
+            result$rank[i] <- "order"
+          } else if (grepl("dae$", first_word, ignore.case = TRUE)) {
+            result$rank[i] <- "family"
+          } else {
+            result$rank[i] <- "genus"
+          }
+        } else {
+          result$rank[i] <- "Unknown"
+        }
       }
     }
     
@@ -942,7 +947,11 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
     family_lower <- tolower(trimws(result$family[i] %||% ""))
     order_name <- result$order[i] %||% ""
     
-    if (current_rank == "species") {
+    # Skip status determination if name is unrecognized
+    if (result$accepted_name[i] == "Unknown") {
+      result$status[i] <- "NA"
+      result$genus_status[i] <- "NA"
+    } else if (current_rank == "species") {
       # Check species against extant_species_list
       if (accepted_name_lower %in% extant_species_list) {
         result$status[i] <- "extant"
