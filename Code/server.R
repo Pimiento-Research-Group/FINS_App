@@ -2,6 +2,9 @@
 
 server <- function(input, output, session) {
   
+  message("rgplates available on server? ", requireNamespace("rgplates", quietly = FALSE))
+  
+  
   # Use rv$occ / rv$col / rv$refs everywhere instead of raw occ/col/refs
   rv <- reactiveValues(occ = occ, col = col, refs = refs, occ_version = 0)
   
@@ -147,7 +150,7 @@ server <- function(input, output, session) {
       superorder        = df[["superorder"]],
       rank              = df[["rank"]],
       status            = df[["status"]],
-      source            = factor("PBDB", levels = source_levels),
+      source            = factor("PBDB_U", levels = source_levels),
       reference         = df[["ref_author"]]
     )
     
