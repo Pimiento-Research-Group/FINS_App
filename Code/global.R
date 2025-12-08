@@ -16,6 +16,7 @@ library(here)
 library(shinyBS)
 library(forcats)
 library(readxl)
+library(httr2)
 
 # Make branding folder available for logos
 shiny::addResourcePath("branding", here::here("branding"))
@@ -405,6 +406,7 @@ classify_interval_type <- function(label) {
   if (!requireNamespace("rgplates", quietly = TRUE)) {
     return(list(ok = FALSE, xy = c(NA_real_, NA_real_), model = NA, reason = "Package 'rgplates' not available"))
   }
+  
   # Try each model in order; record first success or the last error
   last_err <- NULL
   for (m in models) {
@@ -418,8 +420,14 @@ classify_interval_type <- function(label) {
     if (is.matrix(out) && ncol(out) >= 2 && is.finite(out[1,1]) && is.finite(out[1,2])) {
       return(list(ok = TRUE, xy = c(as.numeric(out[1,1]), as.numeric(out[1,2])), model = m, reason = "OK"))
     } else {
-      # store a brief reason
-      msg <- if (inherits(out, "error") || inherits(out, "warning")) conditionMessage(out) else "Unknown failure"
+      # store a brief reason with more detail
+      msg <- if (inherits(out, "error") || inherits(out, "warning")) {
+        conditionMessage(out)
+      } else if (is.null(out)) {
+        "NULL response from API"
+      } else {
+        paste("Unexpected response type:", class(out)[1])
+      }
       last_err <- paste0(m, ": ", msg)
     }
   }
