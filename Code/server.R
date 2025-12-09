@@ -1718,7 +1718,12 @@ server <- function(input, output, session) {
   
   pbdb_col_aligned <- reactive({
     out <- align_to_template(pbdb_col_processed(), rv$col)
-    out
+    # Keep only columns that exist in the original FINS schema (plus marker columns)
+    marker_cols <- grep("^m_", names(out), value = TRUE)
+    # Exclude columns that shouldn't appear in preview
+    exclude_cols <- c("reference_display", "reference_key")
+    keep_cols <- setdiff(names(out), exclude_cols)
+    out[, keep_cols, drop = FALSE]
   })
   
   output$pbdb_col_preview <- renderDT({
@@ -1957,7 +1962,9 @@ server <- function(input, output, session) {
                       "age_range_calc", "age_range_any", "coll_id")
     keep_cols <- intersect(names(df), c(occ_original_cols, marker_cols, derived_cols))
     # Exclude columns that shouldn't appear in preview
-    exclude_cols <- c("reference_display", "reference_key")
+    exclude_cols <- c("reference_display", "reference_key", 
+                      "name_curated", "name_updated", "name_raw", 
+                      "age_range_calc", "age_range_any")
     keep_cols <- setdiff(keep_cols, exclude_cols)
     df[, keep_cols, drop = FALSE]
   })
