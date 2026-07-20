@@ -87,6 +87,75 @@ apply_validation <- function(df, val_flags) {
   out
 }
 
+# Locality ID assignment
+# A "locality" is a unique latitude + longitude + min_ma + max_ma combination.
+# New rows matching an already-loaded locality reuse its ID; genuinely new localities
+# get the next integer after the current maximum. Rows missing any key value get NA.
+# `existing` is the currently loaded collections (NULL = none, e.g. replace mode).
+assign_locality_ids <- function(new_df, existing, digits = 5) {
+  key_cols <- c("latitude", "longitude", "min_ma", "max_ma")
+  
+  make_key <- function(d) {
+    if (is.null(d) || nrow(d) == 0 || !all(key_cols %in% names(d))) return(character(0))
+    lat <- suppressWarnings(as.numeric(d[["latitude"]]))
+    lng <- suppressWarnings(as.numeric(d[["longitude"]]))
+    mn  <- suppressWarnings(as.numeric(d[["min_ma"]]))
+    mx  <- suppressWarnings(as.numeric(d[["max_ma"]]))
+    ok  <- is.finite(lat) & is.finite(lng) & is.finite(mn) & is.finite(mx)
+    ifelse(ok, paste(round(lat, digits), round(lng, digits),
+                     round(mn, digits),  round(mx, digits), sep = "|"), NA_character_)
+  }
+  
+  existing_map <- integer(0); max_id <- 0L
+  if (!is.null(existing) && "locality_id" %in% names(existing) && nrow(existing) > 0) {
+    ex_key <- make_key(existing)
+    ex_id  <- suppressWarnings(as.integer(as.character(existing[["locality_id"]])))
+    valid  <- !is.na(ex_key) & !is.na(ex_id)
+    if (any(valid)) existing_map <- tapply(ex_id[valid], ex_key[valid], function(x) x[1])
+    if (any(!is.na(ex_id))) max_id <- max(ex_id, na.rm = TRUE)
+  }
+  
+  new_key <- make_key(new_df)
+  out_id  <- rep(NA_integer_, nrow(new_df))
+  batch_map <- integer(0); next_id <- max_id
+  
+  for (i in seq_len(nrow(new_df))) {
+    k <- new_key[i]
+    if (is.na(k)) next
+    if (k %in% names(existing_map))      out_id[i] <- existing_map[[k]]
+    else if (k %in% names(batch_map))    out_id[i] <- batch_map[[k]]
+    else { next_id <- next_id + 1L; batch_map[[k]] <- next_id; out_id[i] <- next_id }
+  }
+  
+  new_df$locality_id <- out_id
+  new_df
+}
+
+# Duplicate marking for newly added occurrences
+# Marks each new occurrence "duplicate"/"unique" for a given identifier, considering
+# both the preloaded occurrences and earlier rows in the same batch. The first time a
+# (accepted_name + id) combination appears — and it isn't already in the preloaded set —
+# it is "unique"; every later occurrence of that combination is "duplicate".
+# id_col = "collection_number" resolves to coalesce(collection_number, coll_id).
+mark_occurrence_duplicates <- function(new_df, existing_df, id_col) {
+  key <- function(d) {
+    if (is.null(d) || nrow(d) == 0) return(character(0))
+    nm <- if ("accepted_name" %in% names(d)) as.character(d[["accepted_name"]])
+    else rep(NA_character_, nrow(d))
+    id <- if (identical(id_col, "collection_number")) {
+      cn <- if ("collection_number" %in% names(d)) as.character(d[["collection_number"]])
+      else rep(NA_character_, nrow(d))
+      ci <- if ("coll_id" %in% names(d)) as.character(d[["coll_id"]])
+      else rep(NA_character_, nrow(d))
+      dplyr::coalesce(cn, ci)
+    } else if (id_col %in% names(d)) as.character(d[[id_col]]) else rep(NA_character_, nrow(d))
+    paste(nm, id, sep = "\u001f")
+  }
+  new_key <- key(new_df)
+  ex_key  <- key(existing_df)
+  ifelse((new_key %in% ex_key) | duplicated(new_key), "duplicate", "unique")
+}
+
 # Expand ISO2 country codes (e.g., "US") to full names ("United States").
 # Uses countrycode if available; otherwise a small built-in fallback map.
 expand_country_codes <- function(x) {
@@ -282,7 +351,7 @@ country_to_continent <- function(country_vec) {
   
   # South American Land Mammal Ages (SALMA)
   salma_paleocene <- c("Tiupampan", "Peligran" ,"Riochican")
-  salma_eocene    <- c("Itaboraian, Casamayoran", "Mustersan", "Divisaderan")
+  salma_eocene    <- c("Itaboraian", "Casamayoran", "Mustersan", "Divisaderan")
   salma_oligo     <- c("Tinguirirican", "Deseadan")
   salma_mioc     <- c("Colhuehuapian","Santacrucian","Friasian","Colloncuran","Laventan","Mayoan","Chasiquian","Huayquerian")
   salma_plio   <- c("Montehermosan","Chapadmalalan")
@@ -344,7 +413,7 @@ resolve_interval_hierarchy <- function(x) {
   "Tiupampan","Peligran","Riochican",
   "Itaboraian","Casamayoran",
   "Mustersan","Divisaderan","Tinguirirican","Deseadan",
-  "Colhuehuapian","Santacrucian","Friasian","Colloncuran","Laventan","Mayoan","Chasiquan","Huayquerian",
+  "Colhuehuapian","Santacrucian","Friasian","Colloncuran","Laventan","Mayoan","Chasiquian","Huayquerian",
   "Montehermosan","Chapadmalalan","Uquian","Ensenadan","Lujanian")
 .mn_set <- c(paste0("MN ", 1:17), "MN 7/8")
 .mp_set <- paste0("MP ", 1:30)
@@ -377,7 +446,13 @@ classify_interval_type <- function(label) {
 }
 
 # ---- Paleocoordinate reconstruction helpers ----
-.recon_models <- c("MATTHEWS2016_mantle_ref", "PALEOMAP", "SETON2012", "MULLER2019")
+.recon_models_v3 <- c(golonka  = "GOLONKA",
+                      paleomap = "PALEOMAP",
+                      seton    = "SETON2012",
+                      matthews = "MATTHEWS2016_mantle_ref",
+                      muller   = "MULLER2019")
+# coalesce priority for the composite coordinate used in ocean assignment (script 3)
+.recon_coalesce_order <- c("golonka","seton","paleomap","matthews","muller")
 
 # Create a cache key from the uploaded Collections file
 .make_paleo_key <- function(df) {
@@ -399,83 +474,53 @@ classify_interval_type <- function(label) {
   digest::digest(key_string, algo = "md5")
 }
 
-.reconstruct_one <- function(lon, lat, age_ma, models = .recon_models) {
-  # Validate inputs first
-  if (is.na(lon) || is.na(lat))  return(list(ok = FALSE, xy = c(NA_real_, NA_real_), model = NA, reason = "Missing lon/lat"))
-  if (is.na(age_ma))             return(list(ok = FALSE, xy = c(NA_real_, NA_real_), model = NA, reason = "Missing age"))
-  if (!requireNamespace("rgplates", quietly = TRUE)) {
-    return(list(ok = FALSE, xy = c(NA_real_, NA_real_), model = NA, reason = "Package 'rgplates' not available"))
-  }
-  
-  # Try each model in order; record first success or the last error
-  last_err <- NULL
-  for (m in models) {
-    out <- tryCatch(
-      {
-        rgplates::reconstruct(c(lon, lat), age = age_ma, enumerate = FALSE, model = m)
-      },
-      error = function(e) e,
-      warning = function(w) w
-    )
-    if (is.matrix(out) && ncol(out) >= 2 && is.finite(out[1,1]) && is.finite(out[1,2])) {
-      return(list(ok = TRUE, xy = c(as.numeric(out[1,1]), as.numeric(out[1,2])), model = m, reason = "OK"))
-    } else {
-      # store a brief reason with more detail
-      msg <- if (inherits(out, "error") || inherits(out, "warning")) {
-        conditionMessage(out)
-      } else if (is.null(out)) {
-        "NULL response from API"
-      } else {
-        paste("Unexpected response type:", class(out)[1])
-      }
-      last_err <- paste0(m, ": ", msg)
-    }
-  }
-  list(ok = FALSE, xy = c(NA_real_, NA_real_), model = NA, reason = last_err %||% "All models failed")
+# Reconstruct one point across a vector of ages for one model -> n x 2 matrix (long, lat)
+.reconstruct_ages <- function(lon, lat, ages, model_name) {
+  pt  <- data.frame(longitude = lon, latitude = lat)
+  res <- tryCatch(rgplates::reconstruct(pt, age = ages, model = model_name),
+                  error = function(e) NULL)
+  if (is.null(res)) return(matrix(NA_real_, length(ages), 2))
+  m <- tryCatch(do.call(rbind, lapply(res, function(r) {
+    r <- as.data.frame(r)
+    if (nrow(r) < 1 || ncol(r) < 2) c(NA_real_, NA_real_) else as.numeric(r[1, 1:2])
+  })), error = function(e) NULL)
+  if (is.null(m) || nrow(m) != length(ages)) matrix(NA_real_, length(ages), 2) else m
 }
 
-.paleo_mc_median <- function(lon, lat, min_ma, max_ma, n = 30, models = .recon_models) {
-  if (is.na(min_ma) && is.na(max_ma))  return(list(ok = FALSE, xy = c(NA_real_, NA_real_), n_ok = 0, reason = "No min/max age", model_used = NA_character_))
-  if (is.na(min_ma)) min_ma <- max_ma
-  if (is.na(max_ma)) max_ma <- min_ma
-  a_min <- as.numeric(min(min_ma, max_ma))
-  a_max <- as.numeric(max(min_ma, max_ma))
-  if (!is.finite(a_min) || !is.finite(a_max)) return(list(ok = FALSE, xy = c(NA_real_, NA_real_), n_ok = 0, reason = "Non-finite age range", model_used = NA_character_))
-  ages <- if (a_min == a_max) rep(a_min, n) else stats::runif(n, min = a_min, max = a_max)
+# Full per-collection result: 10 per-model median coords + composite modal paleoocean.
+# `ages` is the pre-sampled vector (sampling/seed handled by the caller, as offline).
+.paleo_reconstruct_collection <- function(lon, lat, ages) {
+  mk <- names(.recon_models_v3)
+  coord_keys <- as.vector(rbind(paste0("paleolong_", mk), paste0("paleolat_", mk)))
+  res <- setNames(as.list(rep(NA_real_, length(coord_keys))), coord_keys)
+  res$paleoocean <- NA_character_; res$ok_coords <- FALSE; res$ok_ocean <- FALSE
+  if (is.na(lon) || is.na(lat) || is.null(ages) || !length(ages) || all(is.na(ages))) return(res)
+  if (!requireNamespace("rgplates", quietly = TRUE)) return(res)
   
-  plons <- numeric(0); plats <- numeric(0)
-  models_used <- character(0)
-  n_ok  <- 0L
-  last_reason <- NULL
+  per_model <- lapply(.recon_models_v3, function(mn) .reconstruct_ages(lon, lat, ages, mn))
+  names(per_model) <- mk
   
-  for (ag in ages) {
-    res <- .reconstruct_one(lon, lat, ag, models = models)
-    if (isTRUE(res$ok)) {
-      plons <- c(plons, res$xy[1]); plats <- c(plats, res$xy[2])
-      models_used <- c(models_used, res$model %||% NA_character_)
-      n_ok <- n_ok + 1L
-    } else {
-      last_reason <- res$reason
-    }
+  for (nm in mk) {
+    mm <- per_model[[nm]]
+    res[[paste0("paleolong_", nm)]] <- stats::median(mm[, 1], na.rm = TRUE)
+    res[[paste0("paleolat_",  nm)]] <- stats::median(mm[, 2], na.rm = TRUE)
   }
+  res$ok_coords <- any(is.finite(unlist(res[coord_keys])))
   
-  if (n_ok == 0) {
-    return(list(ok = FALSE, xy = c(NA_real_, NA_real_), n_ok = 0, reason = last_reason %||% "All replicates failed", model_used = NA_character_))
+  # composite coordinate per age sample (coalesce across models), then classify + mode
+  n <- length(ages); clong <- rep(NA_real_, n); clat <- rep(NA_real_, n)
+  for (j in seq_len(n)) for (nm in .recon_coalesce_order) {
+    v <- per_model[[nm]][j, ]
+    if (is.finite(v[1]) && is.finite(v[2])) { clong[j] <- v[1]; clat[j] <- v[2]; break }
   }
-  
-  # pick the most frequent successful model (ignoring NA)
-  model_used <- {
-    mu <- na.omit(models_used)
-    if (length(mu)) names(sort(table(mu), decreasing = TRUE))[1] else NA_character_
+  keep <- is.finite(clong) & is.finite(clat)
+  if (any(keep)) {
+    ep <- vapply(ages[keep], .epoch_from_age_ma, character(1))
+    oc <- mapply(.classify_ocean, ep, clong[keep], clat[keep], USE.NAMES = FALSE)
+    om <- .mode1(oc)
+    if (!is.na(om)) { res$paleoocean <- om; res$ok_ocean <- TRUE }
   }
-  
-  list(
-    ok = TRUE,
-    xy = c(stats::median(plons, na.rm = TRUE), stats::median(plats, na.rm = TRUE)),
-    n_ok = n_ok,
-    reason = sprintf("OK (%d/%d replicates)", n_ok, n),
-    model_used = model_used
-  )
+  res
 }
 
 # ---------- Assign Paleooceans helpers ------------
@@ -499,125 +544,69 @@ classify_interval_type <- function(label) {
   if (age <= 100.5)  return("Upper Cretaceous")
   if (age <= 145)    return("Lower Cretaceous")
   if (age <= 161.5)  return("Upper Jurassic")
-  if (age <= 174.1)  return("Middle Jurassic")
-  if (age <= 201.3)  return("Lower Jurassic")
+  if (age <= 174.7)  return("Middle Jurassic")
+  if (age <= 201.4)  return("Lower Jurassic")
   NA_character_
 }
 
 .classify_ocean <- function(epoch_label, lon, lat) {
-  # Guard
   if (is.na(lon) || is.na(lat)) return(NA_character_)
   e <- epoch_label %||% NA_character_
-  if (is.na(e)) return(NA_character_)
+  if (is.na(e)) return("Pacific")
+  btw <- function(x, a, b) is.finite(x) && x > a && x < b
   
-  # Helpers
-  between <- function(x, a, b) is.finite(x) && x > a && x < b
+  if (e == "Lower Jurassic")  { if (btw(lon,0,120)  && btw(lat,-40,45)) return("Tethys"); return("Pacific") }
+  if (e == "Middle Jurassic") { if (btw(lon,0,120)  && btw(lat,-45,45)) return("Tethys"); return("Pacific") }
+  if (e == "Upper Jurassic")  { if (btw(lon,22,130) && btw(lat,-40,30)) return("Tethys"); return("Pacific") }
   
-  # Jurassic
-  if (e %in% c("Lower Jurassic","Middle Jurassic","Upper Jurassic")) {
-    if (e == "Lower Jurassic") {
-      if (between(lon, 0, 120) && between(lat, -40, 45)) return("Tethys")
-      else return("Pacific")
-    }
-    if (e == "Middle Jurassic") {
-      if (between(lon, 0, 120) && between(lat, -45, 45)) return("Tethys")
-      else return("Pacific")
-    }
-    if (e == "Upper Jurassic") {
-      if (between(lon, 22, 130) && between(lat, -40, 30)) return("Tethys")
-      else return("Pacific")
-    }
-  }
-  
-  # Lower Cretaceous
   if (e == "Lower Cretaceous") {
-    if (between(lon, -70, -30) && between(lat, 30, 70)) return("Western Interior Seaway")
-    if (between(lon, 30, 120)  && between(lat, -60, 30)) return("Tethys")
-    if (between(lon, -50, 0)   && between(lat, 0, 40))   return("Western Tethys")
-    if (between(lon, 0, 30)    && between(lat, 0, 60))   return("Tethys Seaway")
-    if (between(lon, 30, 60)   && between(lat, 30, 60))  return("Tethys Seaway")
-    if (between(lon, -30, 0)   && between(lat, -60, 0))  return("Atlantic")
-    if (between(lon, -55, -40) && between(lat, -20, 0))  return("South American Epicontinental Seas")
-    if (lat > 60) return("Arctic")
-    return("Pacific")
+    if (btw(lon,-70,-30) && btw(lat,30,70))  return("Western Interior Seaway")
+    if (btw(lon,30,120)  && btw(lat,-60,30)) return("Tethys")
+    if (btw(lon,-50,0)   && btw(lat,0,40))   return("Western Tethys")
+    if (btw(lon,0,30)    && btw(lat,0,60))   return("Tethys Seaway")
+    if (btw(lon,30,60)   && btw(lat,30,60))  return("Tethys Seaway")
+    if (btw(lon,-30,0)   && btw(lat,-60,0))  return("Atlantic")
+    if (btw(lon,-55,-40) && btw(lat,-20,0))  return("South American Epicontinental Seas")
+    if (lat > 60) return("Arctic"); return("Pacific")
   }
-  
-  # Upper Cretaceous
   if (e == "Upper Cretaceous") {
-    if (between(lon, 30, 120)  && between(lat, -60, 30)) return("Tethys")
-    if (between(lon, 0, 30)    && between(lat, -15, 15)) return("Trans-Saharan Seaway")
-    if (between(lon, -60, 0)   && between(lat, 0, 40))   return("Western Tethys")
-    if (between(lon, -50, -30) && between(lat, 30, 60))  return("Western Interior Seaway")
-    if (between(lon, 0, 30)    && between(lat, 0, 60))   return("Tethys Seaway")
-    if (between(lon, 30, 60)   && between(lat, 30, 60))  return("Tethys Seaway")
-    if (between(lon, -30, 0)   && between(lat, -60, 0))  return("Atlantic")
-    if (between(lon, -55, -40) && between(lat, -25, 0))  return("South American Epicontinental Seas")
-    if (lat > 60) return("Arctic")
-    return("Pacific")
+    if (btw(lon,30,120)  && btw(lat,-60,30)) return("Tethys")
+    if (btw(lon,0,30)    && btw(lat,-15,15)) return("Trans-Saharan Seaway")
+    if (btw(lon,-60,0)   && btw(lat,0,40))   return("Western Tethys")
+    if (btw(lon,-50,-30) && btw(lat,30,60))  return("Western Interior Seaway")
+    if (lat > 60) return("Arctic"); return("Pacific")
   }
-  
-  # Paleocene
   if (e == "Paleocene") {
-    if (lon < 0 && lon > -60 && between(lat,-60,60)) return("Atlantic")
-    if (between(lon, 0, 120) && between(lat,-60,60)) return("Tethys")
     if (lat > 60)  return("Arctic")
     if (lat < -60) return("Southern")
-    return("Pacific")
+    if (btw(lon,0,120) && btw(lat,-60,60)) return("Tethys"); return("Pacific")
   }
-  
-  # Eocene
   if (e == "Eocene") {
-    if (between(lon, 0, 120) && between(lat,-60,0))  return("Indian")
-    if (between(lon, 0, 120) && between(lat,0,60))   return("Neo-Tethys")
-    if (between(lon, -60, 0) && between(lat,-60,60)) return("Atlantic")
-    if (lat > 60)  return("Arctic")
-    if (lat < -60) return("Southern")
-    return("Pacific")
+    if (btw(lon,0,120) && btw(lat,-60,0)) return("Indian")
+    if (btw(lon,0,120) && btw(lat,0,60))  return("Neo-Tethys")
+    if (btw(lon,-60,0) && btw(lat,-60,60)) return("Atlantic"); return("Pacific")
   }
-  
-  # Oligocene
-  if (e == "Oligocene") {
-    if (between(lon, 0, 45)   && between(lat,22.5,60)) return("Neo-Tethys")
-    if (between(lon, -60, 0)  && between(lat,-60,60))  return("Atlantic")
-    if (between(lon, 30, 120) && between(lat,-60,15))  return("Indian")
-    if (lat > 60)  return("Arctic")
-    if (lat < -60) return("Southern")
-    return("Pacific")
+  if (e == "Oligocene" || e == "Miocene") {
+    if (btw(lon,0,45)   && btw(lat,22.5,60)) return("Neo-Tethys")
+    if (btw(lon,-60,0)  && btw(lat,-60,60))  return("Atlantic")
+    if (btw(lon,30,120) && btw(lat,-60,15))  return("Indian"); return("Pacific")
   }
-  
-  # Miocene
-  if (e == "Miocene") {
-    if (between(lon, 0, 45)   && between(lat,22.5,60)) return("Neo-Tethys")
-    if (between(lon, -60, 0)  && between(lat,-60,60))  return("Atlantic")
-    if (between(lon, 30, 120) && between(lat,-60,15))  return("Indian")
-    if (lat > 60)  return("Arctic")
-    if (lat < -60) return("Southern")
-    return("Pacific")
-  }
-  
-  # Pliocene / Pleistocene / Holocene
   if (e %in% c("Pliocene","Pleistocene","Holocene")) {
-    if (between(lon, 0, 45)   && between(lat,22.5,60)) return("Mediterranean")
-    if (between(lon, -60, 0)  && between(lat,-60,60))  return("Atlantic")
-    if (between(lon, 30, 120) && between(lat,-60,20))  return("Indian")
-    if (lat > 60)  return("Arctic")
-    if (lat < -60) return("Southern")
-    return("Pacific")
+    if (btw(lon,0,45)   && btw(lat,22.5,60)) return("Mediterranean")
+    if (btw(lon,-60,0)  && btw(lat,-60,60))  return("Atlantic")
+    if (btw(lon,30,120) && btw(lat,-60,20))  return("Indian"); return("Pacific")
   }
-  
-  # Fallback
-  NA_character_
+  "Pacific"
 }
-
 # ---------- Load datasets ----------
-col  <- read_csv(here::here("data", "Data_S1.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
-occ  <- read_csv(here::here("data", "Data_S2.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+col  <- read_csv(here::here("data", "collections_norm.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+occ  <- read_csv(here::here("data", "occurrences_norm.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 occ_original_cols <- names(occ)  # Store original column names before processing
-refs <- read_csv(here::here("data", "Data_S3.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
+refs <- read_csv(here::here("data", "references_norm.csv"), show_col_types = FALSE, progress = FALSE) %>% drop_dot_cols()
 
 # ---------- Load Taxonomy Lookup ----------
 taxonomy_lookup <- readxl::read_excel(
-  here::here("data", "Lookup_Taxonomy_version.30.3.xlsx"),
+  here::here("data", "Lookup_Taxonomy.xlsx"),
   .name_repair = "minimal"
 ) %>%
   select(Superorder, Order, Family, Genus, 
@@ -1019,6 +1008,45 @@ process_taxonomy_batch <- function(identified_names, tax_map = NULL) {
   result
 }
 
+# All names the default lookup recognises (genera, synonyms, and the higher taxa in
+# the Superorder/Order/Family columns), lowercased — for verifiability checks.
+# Full set of names a lookup recognises (genera, synonyms, families, orders, superorders), lowercased.
+build_known_names <- function(lookup_df) {
+  cols <- intersect(c("Superorder", "Order", "Family", "Genus",
+                      grep("^Synonym", names(lookup_df), value = TRUE)),
+                    names(lookup_df))
+  vals <- tolower(trimws(unlist(lapply(cols, function(cc) as.character(lookup_df[[cc]])),
+                                use.names = FALSE)))
+  unique(vals[!is.na(vals) & vals != ""])
+}
+taxonomy_known_names <- build_known_names(taxonomy_lookup)
+
+# Uncertainty markers in identified_name (ported from the Python rules).
+.uncertainty_pattern <- paste(
+  "aff\\.",            # affinity
+  "cfr?\\.",           # cf. / cfr.
+  "\\?",               # question mark
+  "ex\\.?\\s*gr\\.",   # ex gr. / ex. gr.
+  "\\bgr\\.",          # bare 'gr.'
+  "[\"'\u2018\u2019\u201c\u201d]",  # straight + curly quotes
+  sep = "|"
+)
+
+# uncertain    : identified_name contains an uncertainty marker
+# unverifiable : leading taxon of modified_identified_name not in the lookup
+# valid        : everything else
+classify_taxonomy_validation <- function(identified_name, modified_identified_name,
+                                         known_names = taxonomy_known_names) {
+  idn <- ifelse(is.na(identified_name), "", as.character(identified_name))
+  mod <- ifelse(is.na(modified_identified_name), "", as.character(modified_identified_name))
+  uncertain <- grepl(.uncertainty_pattern, idn, perl = TRUE, ignore.case = TRUE)
+  lead <- tolower(vapply(strsplit(trimws(mod), "\\s+"),
+                         function(w) if (length(w) && nzchar(w[1])) w[1] else "",
+                         character(1)))
+  in_lookup <- nzchar(lead) & lead %in% known_names
+  ifelse(uncertain, "uncertain", ifelse(in_lookup, "valid", "unverifiable"))
+}
+
 # Ensure reference fields exist
 if (!has_col(occ,  "reference_key"))  occ$reference_key  <- NA_character_
 if (!has_col(col,  "reference_key"))  col$reference_key  <- NA_character_
@@ -1086,7 +1114,7 @@ col <- col %>%
   select(-.coll_num_for_source)
 
 # ---------- Color palette ----------
-source_levels <- c("PBDB","Literature","PBDB_U")
+source_levels <- c("PBDB","Literature","U")
 occ$source <- factor(occ$source, levels = source_levels)
 col$collection_source <- factor(col$collection_source, levels = source_levels)
 

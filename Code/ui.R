@@ -265,7 +265,13 @@ ui <- tagList(
                                             style = "default",
                                             value = "panel_curation_occ",
                                             
-                                            radioButtons("name_mode_occ", "Name display:",
+                                            tags$label("Name display:", class = "control-label"),
+                                            tags$p(
+                                              "The occurrence preview only displays the selected option, however the downloaded file will contain both.",
+                                              style = "font-size: 0.85em; color: #666; margin: 2px 0 6px 0;"
+                                            ),
+                                            radioButtons("name_mode_occ",
+                                                         label = NULL,
                                                          choices = c("Curated (accepted_name)"="cur","As provided (identified_name)"="raw"),
                                                          selected = "cur"),
                                             checkboxGroupInput("val_filters_occ", "Valid only:",
@@ -274,12 +280,23 @@ ui <- tagList(
                                                                choices = source_levels_occ, selected = source_levels_occ, inline = TRUE),
                                             checkboxGroupInput(
                                               "uncertain_mode_occ", "Uncertain nomenclature:",
-                                              choices = c("Flag", "Exclude"),
+                                              choices = c("Exclude"),
                                               selected = character(0), inline = TRUE
                                             ),
-                                            helpText('Uncertain terms detected in "identified_name": aff., cf., ?, "'),
-                                            
-                                            checkboxInput("collapse_dups_occ", "Collapse duplicate taxa (by name)", FALSE)
+                                  
+                                            tags$label("Collapse duplicate taxa:", class = "control-label"),
+                                            tags$p(
+                                              "Selecting either option will automatically exclude occurrences marked as NA (invalid occurrences)",
+                                              style = "font-size: 0.85em; color: #666; margin: 2px 0 6px 0;"
+                                            ),
+                                            radioButtons(
+                                              "collapse_dups_occ",
+                                              label = NULL,
+                                              choices = c("Keep all (no collapsing)",
+                                                          "Based on collection number",
+                                                          "Based on locality ID"),
+                                              selected = "Keep all (no collapsing)",
+                                              inline = FALSE)
                             )
                  ),
                  
@@ -399,7 +416,7 @@ ui <- tagList(
                                             style = "default",
                                             value = "panel_source_col",
                                             
-                                            checkboxGroupInput("source_filter_col", "Collection source:",
+                                            checkboxGroupInput("source_filter_col", "Source:",
                                                                choices = source_levels_col_all, selected = source_levels_col_all, inline = TRUE)
                             )
                  ),
