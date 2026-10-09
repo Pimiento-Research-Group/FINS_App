@@ -1,0 +1,11 @@
+Superorder,Order,Family,Genus,Synonym.1,Synonym.2,Synonym.3
+Galeomorphii,Lamniformes,Lamnidae,Carcharodon,,,
+Galeomorphii,Lamniformes,Lamnidae,Isurus,,,
+Galeomorphii,Lamniformes,Otodontidae,Otodus,Carcharocles,Megaselachus,Procarcharodon
+Galeomorphii,Carcharhiniformes,Carcharhinidae,Carcharhinus,,,
+Galeomorphii,Carcharhiniformes,Carcharhinidae,Galeocerdo,,,
+Galeomorphii,Carcharhiniformes,Sphyrnidae,Sphyrna,,,
+Batoidea,Myliobatiformes,Myliobatidae,Myliobatis,,,
+Batoidea,Rajiformes,Rajidae,Raja,,,
+Squalomorphii,Hexanchiformes,Hexanchidae,Hexanchus,,,
+Squalomorphii,Squaliformes,Squalidae,Squalus,,,

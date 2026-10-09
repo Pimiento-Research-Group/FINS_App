@@ -144,14 +144,28 @@ ui <- tagList(
                  column(4, wellPanel(
                    h4("How to cite & Contact"),
                    tags$div(
-                     style = "color: #888; font-style: italic; padding: 20px 0;",
-                     p("Content hidden during peer review.")
+                     h5("How to cite FINS?"),
+                     p("Kocáková, K., Villafaña J.A., Gardiner A., Mathes G.H., Mouton T.L., and Pimiento C. 2026. FINS—A Global Occurrence Dataset of Fossil Neoselachians From the Cretaceous to the Quaternary. Global Ecology and Biogeography 35, no. 10: e70315. https://doi.org/10.1111/geb.70315."),
+                     tags$hr(),
+                     h5("Contact us"),
+                     p("If you would like to report an error or provide a suggestion on how to improve our platform please contact us via the email below."),
+                     p("*Corresponding author: ", tags$a(href = "mailto:kocakova.kristina@gmail.com", "kocakova.kristina@gmail.com"))
                    ),
                    tags$hr(),
                    h4("Supported by"),
                    tags$div(
-                     style = "color: #888; font-style: italic; padding: 20px 0;",
-                     p("Content hidden during peer review.")
+                     style = "display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+           gap: 20px 40px; padding: 20px 0;",
+                     tags$img(
+                       src = "branding/uzh-logo-black.png",
+                       alt = "University of Zurich",
+                       style = "max-height: 50px; max-width: 100%; height: auto; width: auto;"
+                     ),
+                     tags$img(
+                       src = "branding/SNF_logo_standard_office_color_pos_e.png",
+                       alt = "Swiss National Science Foundation",
+                       style = "max-height: 50px; max-width: 100%; height: auto; width: auto;"
+                     )
                    )
                  ))
                )

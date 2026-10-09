@@ -1,0 +1,10 @@
+name: FINS_App
+title:
+username: fins-app
+account: fins-app
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16213873
+bundleId: 12669432
+url: https://fins-app.shinyapps.io/FINS_App/
+version: 1
